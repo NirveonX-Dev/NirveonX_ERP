@@ -48,7 +48,7 @@ export default function Reports() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Submit daily report">
         <form onSubmit={handleCreate} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">Date</label>
               <input type="date" required className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />

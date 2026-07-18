@@ -25,6 +25,10 @@ export default function Chat() {
   const [channel, setChannel] = useState({ type: "channel", id: "company", label: "Company forum" });
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  // On mobile there isn't room for the channel list and the conversation side
+  // by side, so we show one or the other. Desktop always shows both (see
+  // lg: classes below) and ignores this.
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const bottomRef = useRef(null);
 
   useEffect(() => { api.get("/users").then((res) => setUsers(res.data)); }, []);
@@ -76,14 +80,14 @@ export default function Chat() {
 
   return (
     <Layout title="Team Chat">
-      <div className="flex gap-4 h-[calc(100vh-8rem)]">
-        <div className="w-56 shrink-0 space-y-4 overflow-y-auto">
+      <div className="flex gap-4 h-[calc(100vh-9rem)] lg:h-[calc(100vh-8rem)]">
+        <div className={`${showChatOnMobile ? "hidden lg:block" : "block"} w-full lg:w-56 shrink-0 space-y-4 overflow-y-auto`}>
           <div>
             <div className="text-xs font-semibold text-slate-400 uppercase mb-1 px-1">Channels</div>
             {CHANNELS.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setChannel({ type: "channel", id: c.id, label: c.label })}
+                onClick={() => { setChannel({ type: "channel", id: c.id, label: c.label }); setShowChatOnMobile(true); }}
                 className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === c.id && channel.type === "channel" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
               >
                 <span># {c.label}</span>
@@ -100,7 +104,7 @@ export default function Chat() {
             {users.filter((u) => u._id !== user._id).map((u) => (
               <button
                 key={u._id}
-                onClick={() => setChannel({ type: "dm", id: u._id, label: u.name })}
+                onClick={() => { setChannel({ type: "dm", id: u._id, label: u.name }); setShowChatOnMobile(true); }}
                 className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === u._id && channel.type === "dm" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
               >
                 <span className="flex items-center gap-2"><Avatar user={u} size={5} /> {u.name}</span>
@@ -114,9 +118,16 @@ export default function Chat() {
           </div>
         </div>
 
-        <div className="flex-1 card flex flex-col min-w-0">
-          <div className="px-4 py-3 border-b border-slate-100 font-medium text-sm">
-            {channel.type === "dm" ? channel.label : `# ${channel.label}`}
+        <div className={`${showChatOnMobile ? "flex" : "hidden lg:flex"} flex-1 card flex-col min-w-0`}>
+          <div className="px-4 py-3 border-b border-slate-100 font-medium text-sm flex items-center gap-2">
+            <button
+              onClick={() => setShowChatOnMobile(false)}
+              aria-label="Back to channel list"
+              className="lg:hidden -ml-1 p-1 text-slate-400 hover:text-slate-700"
+            >
+              &#8592;
+            </button>
+            <span className="truncate">{channel.type === "dm" ? channel.label : `# ${channel.label}`}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((m) => (

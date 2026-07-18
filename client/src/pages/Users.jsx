@@ -78,8 +78,8 @@ export default function Users() {
       <div className="flex justify-end mb-4">
         <button className="btn-primary" onClick={openCreate}>Add user</button>
       </div>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Name</th>
@@ -133,7 +133,7 @@ export default function Users() {
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? "Edit user" : "Add user"}>
         <form onSubmit={handleSubmit} className="space-y-3">
           {error && <div className="rounded-md bg-red-50 text-red-700 text-sm px-3 py-2">{error}</div>}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">Full name</label>
               <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

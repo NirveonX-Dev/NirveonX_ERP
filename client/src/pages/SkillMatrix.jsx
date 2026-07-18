@@ -66,7 +66,7 @@ export default function SkillMatrix() {
               {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">Department</label>
               <input className="input" value={form.deptKey} onChange={(e) => setForm({ ...form, deptKey: e.target.value })} />

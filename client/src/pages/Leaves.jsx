@@ -35,8 +35,8 @@ export default function Leaves() {
       <div className="flex justify-end mb-4">
         <button className="btn-primary" onClick={() => setOpen(true)}>Request leave</button>
       </div>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Employee</th>
@@ -84,7 +84,7 @@ export default function Leaves() {
               <option value="other">Other</option>
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">Start date</label>
               <input type="date" required className="input" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />

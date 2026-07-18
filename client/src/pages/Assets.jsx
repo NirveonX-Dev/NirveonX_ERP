@@ -41,8 +41,8 @@ export default function Assets() {
       <div className="flex justify-end mb-4">
         <button className="btn-primary" onClick={() => setOpen(true)}>{canReview ? "Add asset" : "Request asset"}</button>
       </div>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Asset</th>
