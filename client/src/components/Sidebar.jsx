@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useChatUnread } from "../context/ChatUnreadContext";
 
 const NAV = [
   { to: "/", label: "Dashboard", roles: null },
@@ -23,6 +24,7 @@ const NAV = [
 
 export default function Sidebar() {
   const { user } = useAuth();
+  const { total: unreadTotal } = useChatUnread();
   const items = NAV.filter((n) => !n.roles || n.roles.includes(user?.role));
 
   return (
@@ -38,12 +40,17 @@ export default function Sidebar() {
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) =>
-              `block rounded-md px-3 py-2 text-sm transition-colors ${
+              `flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
                 isActive ? "bg-brand-600 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
               }`
             }
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.to === "/chat" && unreadTotal > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[1.25rem] h-5 rounded-full bg-accent text-white text-[11px] font-semibold px-1">
+                {unreadTotal > 99 ? "99+" : unreadTotal}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

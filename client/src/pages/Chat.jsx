@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import Avatar from "../components/Avatar";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { useChatUnread } from "../context/ChatUnreadContext";
 
 const CHANNELS = [
   { id: "company", label: "Company forum" },
@@ -19,6 +20,7 @@ const URL_RE = /^https?:\/\//i;
 
 export default function Chat() {
   const { user } = useAuth();
+  const { channels: unreadChannels, dms: unreadDms, markRead } = useChatUnread();
   const [users, setUsers] = useState([]);
   const [channel, setChannel] = useState({ type: "channel", id: "company", label: "Company forum" });
   const [messages, setMessages] = useState([]);
@@ -39,6 +41,12 @@ export default function Chat() {
     load();
     const interval = setInterval(load, 4000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel]);
+
+  // Opening a channel/DM clears its unread badge, here and in the sidebar
+  useEffect(() => {
+    markRead({ type: channel.type, id: channel.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel]);
 
@@ -76,9 +84,14 @@ export default function Chat() {
               <button
                 key={c.id}
                 onClick={() => setChannel({ type: "channel", id: c.id, label: c.label })}
-                className={`w-full text-left rounded-md px-3 py-1.5 text-sm ${channel.id === c.id && channel.type === "channel" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
+                className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === c.id && channel.type === "channel" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
               >
-                # {c.label}
+                <span># {c.label}</span>
+                {unreadChannels[c.id] > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] rounded-full bg-accent text-white text-[10px] font-semibold px-1">
+                    {unreadChannels[c.id] > 99 ? "99+" : unreadChannels[c.id]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -88,9 +101,14 @@ export default function Chat() {
               <button
                 key={u._id}
                 onClick={() => setChannel({ type: "dm", id: u._id, label: u.name })}
-                className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center gap-2 ${channel.id === u._id && channel.type === "dm" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
+                className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === u._id && channel.type === "dm" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
               >
-                <Avatar user={u} size={5} /> {u.name}
+                <span className="flex items-center gap-2"><Avatar user={u} size={5} /> {u.name}</span>
+                {unreadDms[u._id] > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] rounded-full bg-accent text-white text-[10px] font-semibold px-1">
+                    {unreadDms[u._id] > 99 ? "99+" : unreadDms[u._id]}
+                  </span>
+                )}
               </button>
             ))}
           </div>

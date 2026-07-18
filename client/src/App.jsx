@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ChatUnreadProvider } from "./context/ChatUnreadContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
@@ -25,6 +26,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ChatUnreadProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -45,6 +47,7 @@ export default function App() {
           <Route path="/performance" element={<ProtectedRoute roles={["hr", "lead", "teamlead"]}><TeamPerformance /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute roles={["hr", "lead"]}><Users /></ProtectedRoute>} />
         </Routes>
+        </ChatUnreadProvider>
       </AuthProvider>
     </BrowserRouter>
   );
