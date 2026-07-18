@@ -107,7 +107,13 @@ export default function Chat() {
                 onClick={() => { setChannel({ type: "dm", id: u._id, label: u.name }); setShowChatOnMobile(true); }}
                 className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === u._id && channel.type === "dm" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
               >
-                <span className="flex items-center gap-2"><Avatar user={u} size={5} /> {u.name}</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  <Avatar user={u} size={5} />
+                  <span className="min-w-0 truncate">
+                    <span className="block truncate">{u.name}</span>
+                    {u.title && <span className="block text-xs opacity-60 truncate">{u.title}</span>}
+                  </span>
+                </span>
                 {unreadDms[u._id] > 0 && (
                   <span className="ml-2 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] rounded-full bg-accent text-white text-[10px] font-semibold px-1">
                     {unreadDms[u._id] > 99 ? "99+" : unreadDms[u._id]}
@@ -134,7 +140,10 @@ export default function Chat() {
               <div key={m._id} className="flex items-start gap-2">
                 <Avatar user={m.senderId} size={6} />
                 <div>
-                  <div className="text-xs text-slate-400">{m.senderId?.name}</div>
+                  <div className="text-xs text-slate-400">
+                    {m.senderId?.name}
+                    {m.senderId?.title && <span className="opacity-70"> &middot; {m.senderId.title}</span>}
+                  </div>
                   {m.text && <div className="text-sm mt-0.5">{m.text}</div>}
                   {m.imageUrl && <img src={m.imageUrl} alt="shared" className="mt-1 max-w-xs rounded-md border border-slate-200" />}
                   {m.linkUrl && (

@@ -85,7 +85,7 @@ router.post("/read", async (req, res, next) => {
 router.get("/:channelId", async (req, res, next) => {
   try {
     const rows = await ChatMessage.find({ channelId: req.params.channelId })
-      .populate("senderId", "name avatarColor")
+      .populate("senderId", "name avatarColor title")
       .sort({ createdAt: 1 })
       .limit(200);
     res.json(rows);
@@ -98,7 +98,7 @@ router.get("/", async (req, res, next) => {
     if (!req.query.with) return res.status(400).json({ error: "channelId or with is required" });
     const channelId = dmChannelId(req.user._id, req.query.with);
     const rows = await ChatMessage.find({ channelId })
-      .populate("senderId", "name avatarColor")
+      .populate("senderId", "name avatarColor title")
       .sort({ createdAt: 1 })
       .limit(200);
     res.json(rows);
@@ -117,7 +117,7 @@ router.post("/", async (req, res, next) => {
       channelId, senderId: req.user._id,
       text: text || "", imageUrl: imageUrl || null, linkUrl: linkUrl || null,
     });
-    await msg.populate("senderId", "name avatarColor");
+    await msg.populate("senderId", "name avatarColor title");
     res.status(201).json(msg);
   } catch (err) { next(err); }
 });
