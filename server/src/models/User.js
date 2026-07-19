@@ -6,7 +6,7 @@ const UserSchema = new Schema({
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
   email: { type: String, required: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, enum: ["staff", "teamlead", "hr", "lead"], default: "staff" },
+  role: { type: String, enum: ["staff", "teamlead", "hr", "lead", "superadmin"], default: "staff" },
   deptKey: { type: String, required: true }, // appdev | webdev | devops | growth | research | hr | leadership
   title: { type: String, default: "" },
   avatarColor: { type: String, default: "#4338CA" },

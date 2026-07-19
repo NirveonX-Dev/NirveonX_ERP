@@ -35,7 +35,7 @@ export default function App() {
           <Route path="/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
           <Route path="/appraisals" element={<ProtectedRoute><Appraisals /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
-          <Route path="/approvals" element={<ProtectedRoute roles={["hr", "lead", "teamlead"]}><Approvals /></ProtectedRoute>} />
+          <Route path="/approvals" element={<ProtectedRoute roles={["hr", "lead", "teamlead", "superadmin"]}><Approvals /></ProtectedRoute>} />
           <Route path="/esupport" element={<ProtectedRoute><ESupport /></ProtectedRoute>} />
           <Route path="/support247" element={<ProtectedRoute><Support247 /></ProtectedRoute>} />
           <Route path="/leadershipline" element={<ProtectedRoute><LeadershipLine /></ProtectedRoute>} />
@@ -44,8 +44,8 @@ export default function App() {
           <Route path="/skillmatrix" element={<ProtectedRoute><SkillMatrix /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-          <Route path="/performance" element={<ProtectedRoute roles={["hr", "lead", "teamlead"]}><TeamPerformance /></ProtectedRoute>} />
-          <Route path="/users" element={<ProtectedRoute roles={["hr", "lead"]}><Users /></ProtectedRoute>} />
+          <Route path="/performance" element={<ProtectedRoute roles={["hr", "lead", "teamlead", "superadmin"]}><TeamPerformance /></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute roles={["hr", "lead", "superadmin"]}><Users /></ProtectedRoute>} />
         </Routes>
         </ChatUnreadProvider>
       </AuthProvider>

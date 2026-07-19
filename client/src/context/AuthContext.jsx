@@ -44,11 +44,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  const canManage = user && ["hr", "lead"].includes(user.role);
-  const canReview = user && ["hr", "lead", "teamlead"].includes(user.role);
+  const canManage = user && ["hr", "lead", "superadmin"].includes(user.role);
+  const canReview = user && ["hr", "lead", "teamlead", "superadmin"].includes(user.role);
+  const isSuperAdmin = user?.role === "superadmin";
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, login, logout, canManage, canReview }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, logout, canManage, canReview, isSuperAdmin }}>
       {children}
     </AuthContext.Provider>
   );

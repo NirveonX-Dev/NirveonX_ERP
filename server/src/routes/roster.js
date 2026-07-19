@@ -14,7 +14,7 @@ router.get("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.put("/", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.put("/", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const { userId, weekStart, days } = req.body;
     const row = await Roster.findOneAndUpdate(

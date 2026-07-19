@@ -12,7 +12,7 @@ router.get("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.post("/", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const asset = await Asset.create(req.body);
     await asset.populate("assignedTo", "name avatarColor");
@@ -29,7 +29,7 @@ router.post("/request", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.put("/:id", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.put("/:id", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const asset = await Asset.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate("assignedTo", "name avatarColor");
@@ -38,7 +38,7 @@ router.put("/:id", requireRole("hr", "lead", "teamlead"), async (req, res, next)
   } catch (err) { next(err); }
 });
 
-router.delete("/:id", requireRole("hr", "lead"), async (req, res, next) => {
+router.delete("/:id", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
     await Asset.findByIdAndDelete(req.params.id);
     res.json({ success: true });

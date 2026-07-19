@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 // Computed on the fly (no cron, no stored notifications table): interns whose
 // internshipEndDate falls within the next 3 days. Visible to HR/leadership only.
-router.get("/internships-ending", requireRole("hr", "lead"), async (req, res, next) => {
+router.get("/internships-ending", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
     const today = new Date();
     const cutoff = new Date();

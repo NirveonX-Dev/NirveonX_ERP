@@ -17,10 +17,22 @@ router.get("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.post("/", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const { toUserId, points, note } = req.body;
     if (!toUserId || !points) return res.status(400).json({ error: "toUserId and points required" });
+
+    if (toUserId === req.user._id.toString()) {
+      return res.status(400).json({ error: "You can't log points for yourself" });
+    }
+
+    const target = await User.findById(toUserId);
+    if (!target) return res.status(404).json({ error: "That user was not found" });
+
+    if (target.role === "lead" && req.user.role !== "superadmin") {
+      return res.status(403).json({ error: "Only a Super Admin can log points for leadership members" });
+    }
+
     const row = await PerformanceLog.create({ fromUserId: req.user._id, toUserId, points, note });
     await row.populate("fromUserId", "name avatarColor");
     await row.populate("toUserId", "name avatarColor");

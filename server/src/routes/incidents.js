@@ -21,7 +21,7 @@ router.post("/incidents", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.patch("/incidents/:id/status", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.patch("/incidents/:id/status", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const row = await Incident.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true })
       .populate("reportedBy", "name avatarColor");
@@ -39,7 +39,7 @@ router.get("/shifts", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/shifts", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.post("/shifts", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const row = await SupportShift.create(req.body);
     await row.populate("userId", "name avatarColor");
@@ -47,7 +47,7 @@ router.post("/shifts", requireRole("hr", "lead", "teamlead"), async (req, res, n
   } catch (err) { next(err); }
 });
 
-router.delete("/shifts/:id", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.delete("/shifts/:id", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     await SupportShift.findByIdAndDelete(req.params.id);
     res.json({ success: true });

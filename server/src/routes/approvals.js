@@ -4,7 +4,7 @@ const Asset = require("../models/Asset");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
-router.use(requireAuth, requireRole("hr", "lead", "teamlead"));
+router.use(requireAuth, requireRole("hr", "lead", "teamlead", "superadmin"));
 
 // Unified pending-approvals queue, aggregated from leaves + asset requests
 router.get("/", async (req, res, next) => {

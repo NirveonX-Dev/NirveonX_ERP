@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
-    const filter = ["hr", "lead", "teamlead"].includes(req.user.role) ? {} : { userId: req.user._id };
+    const filter = ["hr", "lead", "teamlead", "superadmin"].includes(req.user.role) ? {} : { userId: req.user._id };
     if (req.query.date) filter.date = req.query.date;
     const rows = await DailyReport.find(filter).populate("userId", "name avatarColor deptKey").sort({ date: -1 });
     res.json(rows);

@@ -161,6 +161,7 @@ export default function Users() {
                 <option value="teamlead">Team Lead</option>
                 <option value="hr">HR</option>
                 <option value="lead">Leadership</option>
+                <option value="superadmin">Super Admin</option>
               </select>
             </div>
             <div>

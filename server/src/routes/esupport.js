@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
-    const filter = ["hr", "lead", "teamlead"].includes(req.user.role) ? {} : { userId: req.user._id };
+    const filter = ["hr", "lead", "teamlead", "superadmin"].includes(req.user.role) ? {} : { userId: req.user._id };
     const rows = await ESupportTicket.find(filter).populate("userId", "name avatarColor").sort({ createdAt: -1 });
     res.json(rows);
   } catch (err) { next(err); }
@@ -21,7 +21,7 @@ router.post("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.patch("/:id/status", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.patch("/:id/status", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const row = await ESupportTicket.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true })
       .populate("userId", "name avatarColor");

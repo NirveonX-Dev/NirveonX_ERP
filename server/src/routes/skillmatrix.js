@@ -14,7 +14,7 @@ router.get("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.post("/", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const row = await SkillMatrix.create(req.body);
     await row.populate("userId", "name avatarColor");
@@ -22,7 +22,7 @@ router.post("/", requireRole("hr", "lead", "teamlead"), async (req, res, next) =
   } catch (err) { next(err); }
 });
 
-router.put("/:id", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.put("/:id", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const row = await SkillMatrix.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate("userId", "name avatarColor");
@@ -31,7 +31,7 @@ router.put("/:id", requireRole("hr", "lead", "teamlead"), async (req, res, next)
   } catch (err) { next(err); }
 });
 
-router.delete("/:id", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.delete("/:id", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     await SkillMatrix.findByIdAndDelete(req.params.id);
     res.json({ success: true });

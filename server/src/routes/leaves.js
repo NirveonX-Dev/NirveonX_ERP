@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
-    const filter = ["hr", "lead", "teamlead"].includes(req.user.role) ? {} : { userId: req.user._id };
+    const filter = ["hr", "lead", "teamlead", "superadmin"].includes(req.user.role) ? {} : { userId: req.user._id };
     const leaves = await Leave.find(filter).populate("userId", "name avatarColor deptKey").sort({ createdAt: -1 });
     res.json(leaves);
   } catch (err) { next(err); }
@@ -21,7 +21,7 @@ router.post("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.patch("/:id/decision", requireRole("hr", "lead", "teamlead"), async (req, res, next) => {
+router.patch("/:id/decision", requireRole("hr", "lead", "teamlead", "superadmin"), async (req, res, next) => {
   try {
     const { status } = req.body; // approved | rejected
     const leave = await Leave.findByIdAndUpdate(
@@ -39,7 +39,7 @@ router.delete("/:id", async (req, res, next) => {
     const leave = await Leave.findById(req.params.id);
     if (!leave) return res.status(404).json({ error: "Not found" });
     const isOwner = leave.userId.toString() === req.user._id.toString();
-    if (!isOwner && !["hr", "lead"].includes(req.user.role)) {
+    if (!isOwner && !["hr", "lead", "superadmin"].includes(req.user.role)) {
       return res.status(403).json({ error: "Not allowed" });
     }
     await leave.deleteOne();

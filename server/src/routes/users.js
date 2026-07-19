@@ -27,7 +27,7 @@ router.get("/:id", async (req, res, next) => {
 });
 
 // Only HR/leadership can create, edit, delete, or block users
-router.post("/", requireRole("hr", "lead"), async (req, res, next) => {
+router.post("/", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
     const { name, username, email, password, role, deptKey, title, employmentType, internshipEndDate, avatarColor } = req.body;
     if (!name || !username || !email || !password || !deptKey) {
@@ -51,7 +51,7 @@ router.post("/", requireRole("hr", "lead"), async (req, res, next) => {
   }
 });
 
-router.put("/:id", requireRole("hr", "lead"), async (req, res, next) => {
+router.put("/:id", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
     const updates = { ...req.body };
     delete updates.passwordHash;
@@ -69,7 +69,7 @@ router.put("/:id", requireRole("hr", "lead"), async (req, res, next) => {
 });
 
 // Dedicated block/unblock endpoint - the admin-blocking feature
-router.patch("/:id/block", requireRole("hr", "lead"), async (req, res, next) => {
+router.patch("/:id/block", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
     const { isBlocked } = req.body;
     if (req.params.id === req.user._id.toString() && isBlocked) {
@@ -83,7 +83,7 @@ router.patch("/:id/block", requireRole("hr", "lead"), async (req, res, next) => 
   }
 });
 
-router.delete("/:id", requireRole("hr", "lead"), async (req, res, next) => {
+router.delete("/:id", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
     if (req.params.id === req.user._id.toString()) {
       return res.status(400).json({ error: "You can't delete your own account" });
@@ -100,7 +100,7 @@ router.delete("/:id", requireRole("hr", "lead"), async (req, res, next) => {
 router.put("/:id/intern-profile", async (req, res, next) => {
   try {
     const isSelf = req.params.id === req.user._id.toString();
-    const isPrivileged = ["hr", "lead"].includes(req.user.role);
+    const isPrivileged = ["hr", "lead", "superadmin"].includes(req.user.role);
     if (!isSelf && !isPrivileged) return res.status(403).json({ error: "Not allowed" });
     const user = await User.findByIdAndUpdate(
       req.params.id,

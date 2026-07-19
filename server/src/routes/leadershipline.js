@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
-    const filter = req.user.role === "lead" ? {} : { userId: req.user._id };
+    const filter = ["lead", "superadmin"].includes(req.user.role) ? {} : { userId: req.user._id };
     const rows = await LeadershipMessage.find(filter).populate("userId", "name avatarColor deptKey").sort({ createdAt: -1 });
     res.json(rows);
   } catch (err) { next(err); }
@@ -21,7 +21,7 @@ router.post("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.patch("/:id/reply", requireRole("lead"), async (req, res, next) => {
+router.patch("/:id/reply", requireRole("lead", "superadmin"), async (req, res, next) => {
   try {
     const row = await LeadershipMessage.findByIdAndUpdate(
       req.params.id,

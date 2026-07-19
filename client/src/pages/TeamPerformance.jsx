@@ -3,12 +3,15 @@ import Layout from "../components/Layout";
 import Modal from "../components/Modal";
 import Avatar from "../components/Avatar";
 import api from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function TeamPerformance() {
+  const { user, isSuperAdmin } = useAuth();
   const [rows, setRows] = useState([]);
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ toUserId: "", points: 5, note: "" });
+  const [error, setError] = useState("");
 
   function load() {
     api.get("/performance").then((res) => setRows(res.data));
@@ -18,18 +21,37 @@ export default function TeamPerformance() {
     api.get("/users").then((res) => setUsers(res.data));
   }, []);
 
+  // Nobody can log points for themselves. And only a Super Admin can log
+  // points for leadership members - everyone else only sees non-leadership
+  // teammates in this list.
+  const eligibleUsers = users.filter((u) => {
+    if (u._id === user._id) return false;
+    if (u.role === "lead" && !isSuperAdmin) return false;
+    return true;
+  });
+
+  function openModal() {
+    setError("");
+    setForm({ toUserId: "", points: 5, note: "" });
+    setOpen(true);
+  }
+
   async function handleCreate(e) {
     e.preventDefault();
-    await api.post("/performance", form);
-    setOpen(false);
-    setForm({ toUserId: "", points: 5, note: "" });
-    load();
+    setError("");
+    try {
+      await api.post("/performance", form);
+      setOpen(false);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || "Couldn't log points");
+    }
   }
 
   return (
     <Layout title="Team Performance">
       <div className="flex justify-end mb-4">
-        <button className="btn-primary" onClick={() => setOpen(true)}>Log points</button>
+        <button className="btn-primary" onClick={openModal}>Log points</button>
       </div>
       <div className="card divide-y divide-slate-100">
         {rows.map((r) => (
@@ -49,12 +71,16 @@ export default function TeamPerformance() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Log performance points">
         <form onSubmit={handleCreate} className="space-y-3">
+          {error && <div className="rounded-md bg-red-50 text-red-700 text-sm px-3 py-2">{error}</div>}
           <div>
             <label className="label">Teammate</label>
             <select required className="input" value={form.toUserId} onChange={(e) => setForm({ ...form, toUserId: e.target.value })}>
               <option value="">Select teammate</option>
-              {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
+              {eligibleUsers.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
             </select>
+            {!isSuperAdmin && (
+              <p className="text-xs text-slate-400 mt-1">Only a Super Admin can log points for leadership members.</p>
+            )}
           </div>
           <div>
             <label className="label">Points (1-10)</label>

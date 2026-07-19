@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
-    const filter = ["hr", "lead", "teamlead"].includes(req.user.role) ? {} : { userId: req.user._id };
+    const filter = ["hr", "lead", "teamlead", "superadmin"].includes(req.user.role) ? {} : { userId: req.user._id };
     const certs = await Certificate.find(filter).populate("userId", "name avatarColor").sort({ createdAt: -1 });
     res.json(certs);
   } catch (err) { next(err); }

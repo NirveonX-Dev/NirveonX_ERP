@@ -9,7 +9,7 @@ const NAV = [
   { to: "/certificates", label: "Certificates", roles: null },
   { to: "/appraisals", label: "Appraisals", roles: null },
   { to: "/assets", label: "Assets", roles: null },
-  { to: "/approvals", label: "Approvals", roles: ["hr", "lead", "teamlead"] },
+  { to: "/approvals", label: "Approvals", roles: ["hr", "lead", "teamlead", "superadmin"] },
   { to: "/esupport", label: "eSupport", roles: null },
   { to: "/support247", label: "Support 24x7", roles: null },
   { to: "/leadershipline", label: "Leadership Line", roles: null },
@@ -18,8 +18,8 @@ const NAV = [
   { to: "/skillmatrix", label: "Skill Matrix", roles: null },
   { to: "/chat", label: "Team Chat", roles: null },
   { to: "/leaderboard", label: "Leaderboard", roles: null },
-  { to: "/performance", label: "Team Performance", roles: ["hr", "lead", "teamlead"] },
-  { to: "/users", label: "Users", roles: ["hr", "lead"] },
+  { to: "/performance", label: "Team Performance", roles: ["hr", "lead", "teamlead", "superadmin"] },
+  { to: "/users", label: "Users", roles: ["hr", "lead", "superadmin"] },
 ];
 
 export default function Sidebar({ open, onClose }) {
