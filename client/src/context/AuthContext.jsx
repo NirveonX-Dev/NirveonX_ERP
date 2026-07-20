@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../lib/api";
+import { setupPushNotifications, teardownPushNotifications } from "../lib/firebase";
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,7 @@ export function AuthProvider({ children }) {
       .then((res) => {
         setUser(res.data);
         localStorage.setItem("nx_user", JSON.stringify(res.data));
+        setupPushNotifications();
       })
       .catch(() => {
         localStorage.removeItem("nx_token");
@@ -35,10 +37,12 @@ export function AuthProvider({ children }) {
     localStorage.setItem("nx_token", res.data.token);
     localStorage.setItem("nx_user", JSON.stringify(res.data.user));
     setUser(res.data.user);
+    setupPushNotifications();
     return res.data.user;
   }
 
-  function logout() {
+  async function logout() {
+    await teardownPushNotifications();
     localStorage.removeItem("nx_token");
     localStorage.removeItem("nx_user");
     setUser(null);

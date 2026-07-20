@@ -1,6 +1,8 @@
 const express = require("express");
 const ChatMessage = require("../models/ChatMessage");
 const ChatReadState = require("../models/ChatReadState");
+const User = require("../models/User");
+const { sendPushToUsers } = require("../utils/push");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
@@ -119,7 +121,38 @@ router.post("/", async (req, res, next) => {
     });
     await msg.populate("senderId", "name avatarColor title");
     res.status(201).json(msg);
+
+    // Push notification - fires after responding, and never blocks or breaks
+    // sending the message if it fails (push not configured yet, no devices
+    // registered, FCM error, etc.) since sendPushToUser/Users swallow errors.
+    notifyRecipients(channelId, req.user, { text, imageUrl, linkUrl }).catch(() => {});
   } catch (err) { next(err); }
 });
+
+async function notifyRecipients(channelId, sender, { text, imageUrl, linkUrl }) {
+  let recipientIds = [];
+
+  if (channelId.startsWith("dm:")) {
+    const [x, y] = channelId.replace("dm:", "").split("_");
+    const otherId = x === sender._id.toString() ? y : x;
+    recipientIds = [otherId];
+  } else if (channelId === "company") {
+    const all = await User.find({ _id: { $ne: sender._id } }).select("_id");
+    recipientIds = all.map((u) => u._id.toString());
+  } else {
+    // Department channel - notify everyone in that department except the sender
+    const deptUsers = await User.find({ deptKey: channelId, _id: { $ne: sender._id } }).select("_id");
+    recipientIds = deptUsers.map((u) => u._id.toString());
+  }
+
+  if (recipientIds.length === 0) return;
+
+  const preview = text || (imageUrl ? "sent an image" : linkUrl ? "shared a link" : "sent a message");
+  await sendPushToUsers(recipientIds, {
+    title: `${sender.name} in Team Chat`,
+    body: preview.length > 100 ? `${preview.slice(0, 97)}...` : preview,
+    url: "/chat",
+  });
+}
 
 module.exports = router;
