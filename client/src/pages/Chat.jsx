@@ -29,6 +29,31 @@ function formatMessageTime(dateStr) {
   return `${datePart}, ${time}`;
 }
 
+// Coarse pointer (touch) devices don't have a convenient Shift key, so on
+// those Enter just inserts a newline and people tap Send instead. On
+// desktop/laptop, Enter sends and Shift+Enter adds a newline.
+const isTouchDevice =
+  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+
+// Turns *word* into bold and preserves line breaks, without pulling in a full
+// markdown library for one symbol.
+function renderMessageText(text) {
+  return text.split("\n").map((line, li, lines) => {
+    const parts = line.split(/(\*[^*\n]+\*)/g).map((part, i) => {
+      if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+        return <strong key={i}>{part.slice(1, -1)}</strong>;
+      }
+      return part;
+    });
+    return (
+      <span key={li}>
+        {parts}
+        {li < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+}
+
 export default function Chat() {
   const { user } = useAuth();
   const { channels: unreadChannels, dms: unreadDms, markRead } = useChatUnread();
@@ -41,6 +66,7 @@ export default function Chat() {
   // lg: classes below) and ignores this.
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => { api.get("/users").then((res) => setUsers(res.data)); }, []);
 
@@ -86,7 +112,26 @@ export default function Chat() {
 
     await api.post("/chat", body);
     setText("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     load();
+  }
+
+  // Enter sends (like most chat apps); Shift+Enter adds a line break. On
+  // touch devices there's no convenient Shift key, so Enter just adds a
+  // line break there and people tap the Send button instead.
+  function handleKeyDown(e) {
+    if (e.key !== "Enter" || e.shiftKey || isTouchDevice) return;
+    e.preventDefault();
+    send(e);
+  }
+
+  // Grows the textarea as the person types multi-line messages, capped so it
+  // doesn't take over the screen.
+  function handleTextChange(e) {
+    setText(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }
 
   return (
@@ -160,7 +205,7 @@ export default function Chat() {
                       </span>
                     )}
                   </div>
-                  {m.text && <div className="text-sm mt-0.5">{m.text}</div>}
+                  {m.text && <div className="text-sm mt-0.5 whitespace-pre-wrap">{renderMessageText(m.text)}</div>}
                   {m.imageUrl && <img src={m.imageUrl} alt="shared" className="mt-1 max-w-xs rounded-md border border-slate-200" />}
                   {m.linkUrl && (
                     <a href={m.linkUrl} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline text-sm break-all mt-0.5 block">
@@ -173,14 +218,22 @@ export default function Chat() {
             {messages.length === 0 && <div className="text-center text-slate-400 text-sm py-8">No messages yet - say hello</div>}
             <div ref={bottomRef} />
           </div>
-          <form onSubmit={send} className="p-3 border-t border-slate-100 flex gap-2">
-            <input
-              className="input"
-              placeholder="Message, or paste an image/link URL..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <button type="submit" className="btn-primary">Send</button>
+          <form onSubmit={send} className="p-3 border-t border-slate-100">
+            <div className="flex gap-2 items-end">
+              <textarea
+                ref={textareaRef}
+                className="input resize-none py-2 leading-snug"
+                rows={1}
+                placeholder="Message, or paste an image/link URL..."
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+              />
+              <button type="submit" className="btn-primary">Send</button>
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1 px-0.5 hidden sm:block">
+              *bold* &middot; Shift+Enter for a new line
+            </div>
           </form>
         </div>
       </div>
