@@ -70,15 +70,31 @@ export default function Dashboard() {
 
       {overview && (
         <div className="mt-8 space-y-6">
-          {overview.topLeader && (
-            <div className="card p-4">
-              <SectionHeader title="This week's leader" linkTo="/leaderboard" linkLabel="Full leaderboard" />
-              <div className="flex items-center gap-3">
-                <span className="text-xl">🏆</span>
-                <Avatar user={overview.topLeader.user} size={7} />
-                <span className="text-sm font-medium flex-1">{overview.topLeader.user.name}</span>
-                <span className="font-mono font-bold text-brand-600">{overview.topLeader.totalPoints} pts</span>
-              </div>
+          {(overview.topLeader || overview.allTimeLeader) && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {overview.topLeader && (
+                <div className="card p-4">
+                  <SectionHeader title="This week's leader" linkTo="/leaderboard" linkLabel="Full leaderboard" />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🏆</span>
+                    <Avatar user={overview.topLeader.user} size={7} />
+                    <span className="text-sm font-medium flex-1">{overview.topLeader.user.name}</span>
+                    <span className="font-mono font-bold text-brand-600">{overview.topLeader.totalPoints} pts</span>
+                  </div>
+                </div>
+              )}
+
+              {overview.allTimeLeader && (
+                <div className="card p-4">
+                  <SectionHeader title="All-time high score" linkTo="/leaderboard" linkLabel="Full leaderboard" />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🌟</span>
+                    <Avatar user={overview.allTimeLeader.user} size={7} />
+                    <span className="text-sm font-medium flex-1">{overview.allTimeLeader.user.name}</span>
+                    <span className="font-mono font-bold text-brand-600">{overview.allTimeLeader.totalPoints} pts</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

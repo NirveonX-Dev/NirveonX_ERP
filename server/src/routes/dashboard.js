@@ -51,9 +51,14 @@ router.get("/overview", async (req, res, next) => {
     const leadershipLineFilter = isPrivileged ? {} : { userId: req.user._id };
     const weekStart = mondayOf(new Date());
 
-    const [leaderAgg, latestMessages] = await Promise.all([
+    const [leaderAgg, allTimeLeaderAgg, latestMessages] = await Promise.all([
       PerformanceLog.aggregate([
         { $match: { date: { $gte: weekStart } } },
+        { $group: { _id: "$toUserId", totalPoints: { $sum: "$points" } } },
+        { $sort: { totalPoints: -1 } },
+        { $limit: 1 },
+      ]),
+      PerformanceLog.aggregate([
         { $group: { _id: "$toUserId", totalPoints: { $sum: "$points" } } },
         { $sort: { totalPoints: -1 } },
         { $limit: 1 },
@@ -67,8 +72,15 @@ router.get("/overview", async (req, res, next) => {
       if (user) topLeader = { user: user.toSafeJSON(), totalPoints: leaderAgg[0].totalPoints };
     }
 
+    let allTimeLeader = null;
+    if (allTimeLeaderAgg.length) {
+      const user = await User.findById(allTimeLeaderAgg[0]._id);
+      if (user) allTimeLeader = { user: user.toSafeJSON(), totalPoints: allTimeLeaderAgg[0].totalPoints };
+    }
+
     const result = {
       topLeader,
+      allTimeLeader,
       latestLeadershipLine: latestMessages,
       pendingApprovalsPreview: [],
       departmentLoad: [],
