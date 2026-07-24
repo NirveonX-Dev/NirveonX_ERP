@@ -14,6 +14,14 @@ router.use(requireAuth);
 // Keep in sync with the department list in routes/departments.js
 const DEPARTMENTS_FOR_LOAD = ["appdev", "webdev", "devops", "growth", "research", "hr"];
 
+// Monday-start week, matching the convention used in Roster - returns "YYYY-MM-DD"
+function mondayOf(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.setDate(diff)).toISOString().slice(0, 10);
+}
+
 router.get("/summary", async (req, res, next) => {
   try {
     const [totalEmployees, activeInterns, pendingLeaves, pendingAssets, openTickets, myTasks] = await Promise.all([
@@ -41,9 +49,11 @@ router.get("/overview", async (req, res, next) => {
     const isPrivileged = ["hr", "lead", "teamlead", "superadmin"].includes(req.user.role);
 
     const leadershipLineFilter = isPrivileged ? {} : { userId: req.user._id };
+    const weekStart = mondayOf(new Date());
 
     const [leaderAgg, latestMessages] = await Promise.all([
       PerformanceLog.aggregate([
+        { $match: { date: { $gte: weekStart } } },
         { $group: { _id: "$toUserId", totalPoints: { $sum: "$points" } } },
         { $sort: { totalPoints: -1 } },
         { $limit: 1 },
