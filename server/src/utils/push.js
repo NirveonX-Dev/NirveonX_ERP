@@ -1,5 +1,4 @@
-const { initializeApp, cert } = require("firebase-admin/app");
-const { getMessaging } = require("firebase-admin/messaging");
+const admin = require("firebase-admin");
 const DeviceToken = require("../models/DeviceToken");
 
 let app = null;
@@ -7,19 +6,13 @@ let app = null;
 // Lazily initialize firebase-admin. If FIREBASE_SERVICE_ACCOUNT_JSON isn't set
 // (e.g. local dev before you've set up Firebase), push sending is silently
 // skipped instead of crashing the server - everything else keeps working.
-//
-// NOTE: firebase-admin v12+ removed the old namespaced API
-// (admin.credential.cert(...), admin.messaging()) from the default
-// require("firebase-admin") export. It's modular now - you import
-// initializeApp/cert from "firebase-admin/app" and getMessaging from
-// "firebase-admin/messaging" instead.
 function getApp() {
   if (app) return app;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!raw) return null;
   try {
     const serviceAccount = JSON.parse(raw);
-    app = initializeApp({ credential: cert(serviceAccount) });
+    app = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     return app;
   } catch (err) {
     console.error("Failed to initialize firebase-admin - check FIREBASE_SERVICE_ACCOUNT_JSON:", err.message);
@@ -38,7 +31,7 @@ async function sendPushToUser(userId, { title, body, url = "/" }) {
   if (tokens.length === 0) return;
 
   try {
-    const response = await getMessaging(firebaseApp).sendEachForMulticast({
+    const response = await admin.messaging().sendEachForMulticast({
       tokens,
       notification: { title, body },
       webpush: {
@@ -48,11 +41,17 @@ async function sendPushToUser(userId, { title, body, url = "/" }) {
     });
 
     // Clean up tokens that are no longer valid (user revoked permission,
-    // uninstalled the PWA, browser data cleared, etc.)
+    // uninstalled the PWA, browser data cleared, etc.). Anything else that
+    // failed gets logged instead of silently disappearing, so a bad
+    // credential, quota, or sender-id mismatch is actually visible here.
     const deadTokens = [];
     response.responses.forEach((r, i) => {
-      if (!r.success && ["messaging/registration-token-not-registered", "messaging/invalid-registration-token"].includes(r.error?.code)) {
+      if (r.success) return;
+      const code = r.error?.code;
+      if (["messaging/registration-token-not-registered", "messaging/invalid-registration-token"].includes(code)) {
         deadTokens.push(tokens[i]);
+      } else {
+        console.error(`Push failed for user ${userId}, token ${tokens[i].slice(0, 12)}...: ${code} - ${r.error?.message}`);
       }
     });
     if (deadTokens.length > 0) {
