@@ -1,4 +1,5 @@
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getMessaging } = require("firebase-admin/messaging");
 const DeviceToken = require("../models/DeviceToken");
 
 let app = null;
@@ -6,13 +7,17 @@ let app = null;
 // Lazily initialize firebase-admin. If FIREBASE_SERVICE_ACCOUNT_JSON isn't set
 // (e.g. local dev before you've set up Firebase), push sending is silently
 // skipped instead of crashing the server - everything else keeps working.
+//
+// NOTE: firebase-admin v14 uses the modular API (initializeApp/cert from
+// "firebase-admin/app", getMessaging from "firebase-admin/messaging") -
+// there is no top-level admin.credential.cert() or admin.messaging() anymore.
 function getApp() {
   if (app) return app;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!raw) return null;
   try {
     const serviceAccount = JSON.parse(raw);
-    app = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    app = initializeApp({ credential: cert(serviceAccount) });
     return app;
   } catch (err) {
     console.error("Failed to initialize firebase-admin - check FIREBASE_SERVICE_ACCOUNT_JSON:", err.message);
@@ -31,7 +36,7 @@ async function sendPushToUser(userId, { title, body, url = "/" }) {
   if (tokens.length === 0) return;
 
   try {
-    const response = await admin.messaging().sendEachForMulticast({
+    const response = await getMessaging(firebaseApp).sendEachForMulticast({
       tokens,
       notification: { title, body },
       webpush: {
