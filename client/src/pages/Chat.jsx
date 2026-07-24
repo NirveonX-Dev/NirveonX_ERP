@@ -18,6 +18,17 @@ const CHANNELS = [
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i;
 const URL_RE = /^https?:\/\//i;
 
+function formatMessageTime(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (isToday) return time;
+  const isThisYear = d.getFullYear() === now.getFullYear();
+  const datePart = d.toLocaleDateString([], { month: "short", day: "numeric", year: isThisYear ? undefined : "numeric" });
+  return `${datePart}, ${time}`;
+}
+
 export default function Chat() {
   const { user } = useAuth();
   const { channels: unreadChannels, dms: unreadDms, markRead } = useChatUnread();
@@ -143,6 +154,11 @@ export default function Chat() {
                   <div className="text-xs text-slate-400">
                     {m.senderId?.name}
                     {m.senderId?.title && <span className="opacity-70"> &middot; {m.senderId.title}</span>}
+                    {m.createdAt && (
+                      <span className="opacity-60" title={new Date(m.createdAt).toLocaleString()}>
+                        {" "}&middot; {formatMessageTime(m.createdAt)}
+                      </span>
+                    )}
                   </div>
                   {m.text && <div className="text-sm mt-0.5">{m.text}</div>}
                   {m.imageUrl && <img src={m.imageUrl} alt="shared" className="mt-1 max-w-xs rounded-md border border-slate-200" />}
