@@ -1,12 +1,21 @@
 const express = require("express");
 const ChatMessage = require("../models/ChatMessage");
 const ChatReadState = require("../models/ChatReadState");
+const ChatGroup = require("../models/ChatGroup");
 const User = require("../models/User");
 const { sendPushToUsers } = require("../utils/push");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 router.use(requireAuth);
+
+// Same roles that get canReview on the client - teamlead and above can
+// create/manage groups.
+const LEADER_ROLES = ["teamlead", "hr", "lead", "superadmin"];
+
+function groupChannelId(groupId) {
+  return `group:${groupId}`;
+}
 
 // Keep this in sync with the fixed channel list in client/src/pages/Chat.jsx
 const FIXED_CHANNELS = ["company", "appdev", "webdev", "devops", "growth", "research", "hr"];
@@ -34,7 +43,10 @@ router.get("/unread", async (req, res, next) => {
     });
     const myDmChannelIds = dmChannelIds.filter((cid) => cid.includes(myId));
 
-    const allChannelIds = [...FIXED_CHANNELS, ...myDmChannelIds];
+    const myGroups = await ChatGroup.find({ members: req.user._id }).select("_id");
+    const myGroupChannelIds = myGroups.map((g) => groupChannelId(g._id));
+
+    const allChannelIds = [...FIXED_CHANNELS, ...myDmChannelIds, ...myGroupChannelIds];
 
     const readStates = await ChatReadState.find({ userId: req.user._id, channelId: { $in: allChannelIds } });
     const lastReadMap = Object.fromEntries(readStates.map((r) => [r.channelId, r.lastReadAt]));
@@ -84,8 +96,91 @@ router.post("/read", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// IMPORTANT: these /groups routes must be declared before "/:channelId"
+// below, for the same reason /unread and /read are - otherwise Express would
+// match "/groups" as channelId="groups".
+
+// List the groups the current user belongs to
+router.get("/groups", async (req, res, next) => {
+  try {
+    const groups = await ChatGroup.find({ members: req.user._id })
+      .populate("members", "name avatarColor title")
+      .populate("createdBy", "name")
+      .sort({ createdAt: -1 });
+    res.json(groups);
+  } catch (err) { next(err); }
+});
+
+// Create a new group - teamlead and above only. Creator is always a member.
+router.post("/groups", async (req, res, next) => {
+  try {
+    if (!LEADER_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Only team leads and above can create groups" });
+    }
+    const name = (req.body.name || "").trim();
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+
+    const memberIds = Array.isArray(req.body.memberIds) ? req.body.memberIds : [];
+    const members = Array.from(new Set([req.user._id.toString(), ...memberIds]));
+
+    const group = await ChatGroup.create({ name, members, createdBy: req.user._id });
+    await group.populate("members", "name avatarColor title");
+    await group.populate("createdBy", "name");
+    res.status(201).json(group);
+  } catch (err) { next(err); }
+});
+
+// Add/remove members - creator only, editable anytime
+router.patch("/groups/:id/members", async (req, res, next) => {
+  try {
+    const group = await ChatGroup.findById(req.params.id);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+    if (group.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Only the group creator can manage members" });
+    }
+
+    const add = Array.isArray(req.body.add) ? req.body.add : [];
+    const remove = Array.isArray(req.body.remove) ? req.body.remove.map(String) : [];
+
+    const current = group.members.map((id) => id.toString());
+    const next = Array.from(new Set([...current, ...add])).filter((id) => !remove.includes(id));
+    // Creator can never be removed, otherwise the group has no owner
+    if (!next.includes(req.user._id.toString())) next.push(req.user._id.toString());
+
+    group.members = next;
+    await group.save();
+    await group.populate("members", "name avatarColor title");
+    await group.populate("createdBy", "name");
+    res.json(group);
+  } catch (err) { next(err); }
+});
+
+// Delete a group - creator only. Wipes its messages and read-state too, so
+// there's nothing orphaned left behind.
+router.delete("/groups/:id", async (req, res, next) => {
+  try {
+    const group = await ChatGroup.findById(req.params.id);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+    if (group.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Only the group creator can delete this group" });
+    }
+
+    const channelId = groupChannelId(group._id);
+    await Promise.all([
+      ChatMessage.deleteMany({ channelId }),
+      ChatReadState.deleteMany({ channelId }),
+      group.deleteOne(),
+    ]);
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 router.get("/:channelId", async (req, res, next) => {
   try {
+    if (req.params.channelId.startsWith("group:")) {
+      const group = await ChatGroup.findOne({ _id: req.params.channelId.replace("group:", ""), members: req.user._id });
+      if (!group) return res.status(403).json({ error: "Not a member of this group" });
+    }
     const rows = await ChatMessage.find({ channelId: req.params.channelId })
       .populate("senderId", "name avatarColor title")
       .sort({ createdAt: 1 })
@@ -115,6 +210,10 @@ router.post("/", async (req, res, next) => {
     if (!text && !imageUrl && !linkUrl) {
       return res.status(400).json({ error: "Message needs text, an image, or a link" });
     }
+    if (channelId.startsWith("group:")) {
+      const group = await ChatGroup.findOne({ _id: channelId.replace("group:", ""), members: req.user._id });
+      if (!group) return res.status(403).json({ error: "Not a member of this group" });
+    }
     const msg = await ChatMessage.create({
       channelId, senderId: req.user._id,
       text: text || "", imageUrl: imageUrl || null, linkUrl: linkUrl || null,
@@ -136,6 +235,9 @@ async function notifyRecipients(channelId, sender, { text, imageUrl, linkUrl }) 
     const [x, y] = channelId.replace("dm:", "").split("_");
     const otherId = x === sender._id.toString() ? y : x;
     recipientIds = [otherId];
+  } else if (channelId.startsWith("group:")) {
+    const group = await ChatGroup.findById(channelId.replace("group:", ""));
+    if (group) recipientIds = group.members.map((id) => id.toString()).filter((id) => id !== sender._id.toString());
   } else if (channelId === "company") {
     const all = await User.find({ _id: { $ne: sender._id } }).select("_id");
     recipientIds = all.map((u) => u._id.toString());

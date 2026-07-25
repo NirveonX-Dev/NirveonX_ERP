@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import Avatar from "../components/Avatar";
+import Modal from "../components/Modal";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useChatUnread } from "../context/ChatUnreadContext";
@@ -55,9 +56,10 @@ function renderMessageText(text) {
 }
 
 export default function Chat() {
-  const { user } = useAuth();
+  const { user, canReview } = useAuth();
   const { channels: unreadChannels, dms: unreadDms, markRead } = useChatUnread();
   const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [channel, setChannel] = useState({ type: "channel", id: "company", label: "Company forum" });
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -68,7 +70,20 @@ export default function Chat() {
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
 
+  // New-group modal
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupMemberIds, setNewGroupMemberIds] = useState([]);
+
+  // Manage-members modal for a group the current user created
+  const [manageGroup, setManageGroup] = useState(null); // group object or null
+
   useEffect(() => { api.get("/users").then((res) => setUsers(res.data)); }, []);
+
+  function loadGroups() {
+    api.get("/chat/groups").then((res) => setGroups(res.data));
+  }
+  useEffect(loadGroups, []);
 
   function load() {
     const params = channel.type === "dm" ? { with: channel.id } : null;
@@ -134,6 +149,42 @@ export default function Chat() {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }
 
+  async function createGroup(e) {
+    e.preventDefault();
+    const name = newGroupName.trim();
+    if (!name) return;
+    const res = await api.post("/chat/groups", { name, memberIds: newGroupMemberIds });
+    setGroupModalOpen(false);
+    setNewGroupName("");
+    setNewGroupMemberIds([]);
+    loadGroups();
+    setChannel({ type: "channel", id: `group:${res.data._id}`, label: res.data.name });
+    setShowChatOnMobile(true);
+  }
+
+  function toggleNewGroupMember(id) {
+    setNewGroupMemberIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function toggleManageMember(id) {
+    if (!manageGroup) return;
+    const isMember = manageGroup.members.some((m) => m._id === id);
+    const body = isMember ? { remove: [id] } : { add: [id] };
+    const res = await api.patch(`/chat/groups/${manageGroup._id}/members`, body);
+    setManageGroup(res.data);
+    loadGroups();
+  }
+
+  async function deleteGroup(group) {
+    if (!window.confirm(`Delete "${group.name}" and all its messages? This can't be undone.`)) return;
+    await api.delete(`/chat/groups/${group._id}`);
+    setManageGroup(null);
+    loadGroups();
+    if (channel.id === `group:${group._id}`) {
+      setChannel({ type: "channel", id: "company", label: "Company forum" });
+    }
+  }
+
   return (
     <Layout title="Team Chat">
       <div className="flex gap-4 h-[calc(100vh-9rem)] lg:h-[calc(100vh-8rem)]">
@@ -154,6 +205,41 @@ export default function Chat() {
                 )}
               </button>
             ))}
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1 px-1">
+              <div className="text-xs font-semibold text-slate-400 uppercase">Groups</div>
+              {canReview && (
+                <button
+                  onClick={() => setGroupModalOpen(true)}
+                  className="text-xs text-brand-600 hover:underline"
+                >
+                  + New
+                </button>
+              )}
+            </div>
+            {groups.map((g) => {
+              const cid = `group:${g._id}`;
+              return (
+                <button
+                  key={g._id}
+                  onClick={() => { setChannel({ type: "channel", id: cid, label: g.name }); setShowChatOnMobile(true); }}
+                  className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === cid && channel.type === "channel" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
+                >
+                  <span className="truncate"># {g.name}</span>
+                  {unreadChannels[cid] > 0 && (
+                    <span className="ml-2 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] rounded-full bg-accent text-white text-[10px] font-semibold px-1">
+                      {unreadChannels[cid] > 99 ? "99+" : unreadChannels[cid]}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {groups.length === 0 && (
+              <div className="text-xs text-slate-400 px-3 py-1">
+                {canReview ? "No groups yet - create one" : "No groups yet"}
+              </div>
+            )}
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-400 uppercase mb-1 px-1">Direct messages</div>
@@ -189,7 +275,18 @@ export default function Chat() {
             >
               &#8592;
             </button>
-            <span className="truncate">{channel.type === "dm" ? channel.label : `# ${channel.label}`}</span>
+            <span className="truncate flex-1">{channel.type === "dm" ? channel.label : `# ${channel.label}`}</span>
+            {channel.id?.startsWith("group:") && (() => {
+              const g = groups.find((g) => `group:${g._id}` === channel.id);
+              return g && g.createdBy?._id === user._id ? (
+                <button
+                  onClick={() => setManageGroup(g)}
+                  className="text-xs text-slate-400 hover:text-brand-600 shrink-0"
+                >
+                  Manage
+                </button>
+              ) : null;
+            })()}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((m) => (
@@ -237,6 +334,77 @@ export default function Chat() {
           </form>
         </div>
       </div>
+
+      <Modal
+        open={groupModalOpen}
+        onClose={() => setGroupModalOpen(false)}
+        title="New group"
+        footer={
+          <>
+            <button type="button" onClick={() => setGroupModalOpen(false)} className="btn-secondary">Cancel</button>
+            <button type="submit" form="new-group-form" className="btn-primary">Create</button>
+          </>
+        }
+      >
+        <form id="new-group-form" onSubmit={createGroup} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-ink block mb-1">Group name</label>
+            <input
+              className="input"
+              placeholder="e.g. Side project - internal tool"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-ink block mb-1">Members</label>
+            <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-md divide-y divide-slate-100">
+              {users.filter((u) => u._id !== user._id).map((u) => (
+                <label key={u._id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={newGroupMemberIds.includes(u._id)}
+                    onChange={() => toggleNewGroupMember(u._id)}
+                  />
+                  <Avatar user={u} size={5} />
+                  <span className="truncate">{u.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="text-xs text-slate-400 mt-1">You're added automatically.</div>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={!!manageGroup}
+        onClose={() => setManageGroup(null)}
+        title={manageGroup ? `Manage "${manageGroup.name}"` : ""}
+        footer={
+          <button type="button" onClick={() => manageGroup && deleteGroup(manageGroup)} className="text-sm text-red-600 hover:underline">
+            Delete group
+          </button>
+        }
+      >
+        {manageGroup && (
+          <div>
+            <label className="text-sm font-medium text-ink block mb-1">Members</label>
+            <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-md divide-y divide-slate-100">
+              {users.filter((u) => u._id !== user._id).map((u) => {
+                const isMember = manageGroup.members.some((m) => m._id === u._id);
+                return (
+                  <label key={u._id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" checked={isMember} onChange={() => toggleManageMember(u._id)} />
+                    <Avatar user={u} size={5} />
+                    <span className="truncate">{u.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </Modal>
     </Layout>
   );
 }
