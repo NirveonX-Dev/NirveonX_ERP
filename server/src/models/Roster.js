@@ -6,11 +6,11 @@ const RosterSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   weekStart: { type: String, required: true }, // ISO date of Monday
   days: {
-    mon: { type: String, default: "office" },
-    tue: { type: String, default: "office" },
-    wed: { type: String, default: "office" },
-    thu: { type: String, default: "office" },
-    fri: { type: String, default: "office" },
+    mon: { type: String, default: "wfh" },
+    tue: { type: String, default: "wfh" },
+    wed: { type: String, default: "wfh" },
+    thu: { type: String, default: "wfh" },
+    fri: { type: String, default: "wfh" },
     sat: { type: String, default: "off" },
     sun: { type: String, default: "off" },
   },

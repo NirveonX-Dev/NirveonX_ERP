@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import Avatar from "../components/Avatar";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
 const DAYS = [["mon", "Mon"], ["tue", "Tue"], ["wed", "Wed"], ["thu", "Thu"], ["fri", "Fri"], ["sat", "Sat"], ["sun", "Sun"]];
-const OPTIONS = ["office", "wfh", "oncall", "leave", "off"];
+const OPTIONS = [ "wfh",  "leave", "off"]; //may add "oncall", "office".
 const COLORS = { office: "bg-emerald-100 text-emerald-700", wfh: "bg-sky-100 text-sky-700", oncall: "bg-purple-100 text-purple-700", leave: "bg-amber-100 text-amber-700", off: "bg-slate-100 text-slate-500" };
 
 function mondayOf(d) {
@@ -17,7 +18,12 @@ function mondayOf(d) {
 
 export default function Roster() {
   const { canReview } = useAuth();
-  const [weekStart, setWeekStart] = useState(mondayOf(new Date()));
+  const [searchParams] = useSearchParams();
+  const [weekStart, setWeekStart] = useState(() => {
+    const fromQuery = searchParams.get("week");
+    return mondayOf(fromQuery || new Date());
+  });
+  const highlightUserId = searchParams.get("user");
   const [rows, setRows] = useState([]);
   const [users, setUsers] = useState([]);
 
@@ -29,7 +35,7 @@ export default function Roster() {
 
   async function setDay(userId, dayKey, value) {
     const existing = rows.find((r) => r.userId._id === userId);
-    const days = existing ? { ...existing.days } : { mon: "office", tue: "office", wed: "office", thu: "office", fri: "office", sat: "off", sun: "off" };
+    const days = existing ? { ...existing.days } : { mon: "wfh", tue: "wfh", wed: "wfh", thu: "wfh", fri: "wfh", sat: "wfh", sun: "wfh" };
     days[dayKey] = value;
     await api.put("/roster", { userId, weekStart, days });
     load();
@@ -37,7 +43,8 @@ export default function Roster() {
 
   function dayValue(userId, dayKey) {
     const existing = rows.find((r) => r.userId._id === userId);
-    return existing?.days?.[dayKey] || "office";
+    if (existing?.days?.[dayKey]) return existing.days[dayKey];
+    return dayKey === "sat" || dayKey === "sun" ? "wfh" : "wfh"; //off : wfh
   }
 
   return (
@@ -56,7 +63,7 @@ export default function Roster() {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u._id} className="border-t border-slate-100">
+              <tr key={u._id} className={`border-t border-slate-100 ${highlightUserId === u._id ? "bg-amber-50" : ""}`}>
                 <td className="px-4 py-2"><div className="flex items-center gap-2"><Avatar user={u} size={6} />{u.name}</div></td>
                 {DAYS.map(([k]) => (
                   <td key={k} className="px-1 py-2 text-center">

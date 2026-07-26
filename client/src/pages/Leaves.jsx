@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import Avatar from "../components/Avatar";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+
+// Monday-start week, matching the convention used in Roster.jsx
+function mondayOf(dateStr) {
+  const date = new Date(dateStr);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.setDate(diff)).toISOString().slice(0, 10);
+}
 
 export default function Leaves() {
   const { canReview } = useAuth();
@@ -52,7 +61,15 @@ export default function Leaves() {
               <tr key={r._id} className="border-t border-slate-100">
                 <td className="px-4 py-2"><div className="flex items-center gap-2"><Avatar user={r.userId} size={6} />{r.userId?.name}</div></td>
                 <td className="px-4 py-2 capitalize">{r.type}</td>
-                <td className="px-4 py-2">{r.startDate} to {r.endDate}</td>
+                <td className="px-4 py-2">
+                  {r.startDate} to {r.endDate}
+                  <Link
+                    to={`/roster?week=${mondayOf(r.startDate)}&user=${r.userId?._id}`}
+                    className="ml-2 text-xs text-brand-600 hover:underline whitespace-nowrap"
+                  >
+                    View in roster
+                  </Link>
+                </td>
                 <td className="px-4 py-2 text-slate-500">{r.reason}</td>
                 <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
                 {canReview && (
@@ -79,8 +96,8 @@ export default function Leaves() {
             <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
               <option value="casual">Casual</option>
               <option value="sick">Sick</option>
-              <option value="annual">Annual</option>
-              <option value="unpaid">Unpaid</option>
+              {/* <option value="annual">Annual</option>
+              <option value="unpaid">Unpaid</option> */}
               <option value="other">Other</option>
             </select>
           </div>
