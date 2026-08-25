@@ -59,6 +59,7 @@ export default function Chat() {
   const { user, canReview } = useAuth();
   const { channels: unreadChannels, dms: unreadDms, markRead } = useChatUnread();
   const [users, setUsers] = useState([]);
+  const [onLeaveIds, setOnLeaveIds] = useState(new Set());
   const [groups, setGroups] = useState([]);
   const [channel, setChannel] = useState({ type: "channel", id: "company", label: "Company forum" });
   const [messages, setMessages] = useState([]);
@@ -79,6 +80,9 @@ export default function Chat() {
   const [manageGroup, setManageGroup] = useState(null); // group object or null
 
   useEffect(() => { api.get("/users").then((res) => setUsers(res.data)); }, []);
+  useEffect(() => {
+    api.get("/leaves/on-leave-today").then((res) => setOnLeaveIds(new Set(res.data)));
+  }, []);
 
   function loadGroups() {
     api.get("/chat/groups").then((res) => setGroups(res.data));
@@ -250,7 +254,7 @@ export default function Chat() {
                 className={`w-full text-left rounded-md px-3 py-1.5 text-sm flex items-center justify-between ${channel.id === u._id && channel.type === "dm" ? "bg-brand-600 text-white" : "hover:bg-slate-100"}`}
               >
                 <span className="flex items-center gap-2 min-w-0">
-                  <Avatar user={u} size={5} />
+                  <Avatar user={u} size={5} onLeave={onLeaveIds.has(u._id)} />
                   <span className="min-w-0 truncate">
                     <span className="block truncate">{u.name}</span>
                     {u.title && <span className="block text-xs opacity-60 truncate">{u.title}</span>}
