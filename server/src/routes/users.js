@@ -29,7 +29,7 @@ router.get("/:id", async (req, res, next) => {
 // Only HR/leadership can create, edit, delete, or block users
 router.post("/", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
-    const { name, username, email, password, role, deptKey, title, employmentType, internshipEndDate, avatarColor } = req.body;
+    const { name, username, email, contactEmail, whatsappNumber, dob, password, role, deptKey, title, employmentType, internshipEndDate, avatarColor } = req.body;
     if (!name || !username || !email || !password || !deptKey) {
       return res.status(400).json({ error: "name, username, email, password, deptKey are required" });
     }
@@ -39,6 +39,9 @@ router.post("/", requireRole("hr", "lead", "superadmin"), async (req, res, next)
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, email, passwordHash, deptKey, title: title || "",
+      contactEmail: contactEmail || "",
+      whatsappNumber: whatsappNumber || "",
+      dob: dob || null,
       username: username.toLowerCase().trim(),
       role: role || "staff",
       employmentType: employmentType || "fulltime",

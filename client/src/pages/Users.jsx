@@ -6,7 +6,7 @@ import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
 const EMPTY_FORM = {
-  name: "", username: "", email: "", password: "", role: "staff", deptKey: "appdev",
+  name: "", username: "", email: "", contactEmail: "", whatsappNumber: "", dob: "", password: "", role: "staff", deptKey: "appdev",
   title: "", employmentType: "fulltime", internshipEndDate: "",
 };
 
@@ -143,8 +143,20 @@ export default function Users() {
               <input className="input" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
             </div>
             <div>
-              <label className="label">Email</label>
+              <label className="label">Email (login)</label>
               <input type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Contact email</label>
+              <input type="email" className="input" value={form.contactEmail || ""} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">WhatsApp number</label>
+              <input type="tel" className="input" placeholder="e.g. +91 98765 43210" value={form.whatsappNumber || ""} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Date of birth</label>
+              <input type="date" className="input" value={form.dob || ""} onChange={(e) => setForm({ ...form, dob: e.target.value })} />
             </div>
             <div>
               <label className="label">{editing ? "New password (optional)" : "Password"}</label>

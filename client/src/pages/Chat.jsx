@@ -89,6 +89,10 @@ export default function Chat() {
   }
   useEffect(loadGroups, []);
 
+  // Full profile (incl. contact email / WhatsApp) of the person we're DMing,
+  // shown in the chat header. `users` already has these via GET /users.
+  const dmPartner = channel.type === "dm" ? users.find((u) => u._id === channel.id) : null;
+
   function load() {
     const params = channel.type === "dm" ? { with: channel.id } : null;
     const url = channel.type === "dm" ? "/chat" : `/chat/${channel.id}`;
@@ -271,26 +275,47 @@ export default function Chat() {
         </div>
 
         <div className={`${showChatOnMobile ? "flex" : "hidden lg:flex"} flex-1 card flex-col min-w-0`}>
-          <div className="px-4 py-3 border-b border-slate-100 font-medium text-sm flex items-center gap-2">
-            <button
-              onClick={() => setShowChatOnMobile(false)}
-              aria-label="Back to channel list"
-              className="lg:hidden -ml-1 p-1 text-slate-400 hover:text-slate-700"
-            >
-              &#8592;
-            </button>
-            <span className="truncate flex-1">{channel.type === "dm" ? channel.label : `# ${channel.label}`}</span>
-            {channel.id?.startsWith("group:") && (() => {
-              const g = groups.find((g) => `group:${g._id}` === channel.id);
-              return g && g.createdBy?._id === user._id ? (
-                <button
-                  onClick={() => setManageGroup(g)}
-                  className="text-xs text-slate-400 hover:text-brand-600 shrink-0"
-                >
-                  Manage
-                </button>
-              ) : null;
-            })()}
+          <div className="px-4 py-3 border-b border-slate-100 text-sm">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowChatOnMobile(false)}
+                aria-label="Back to channel list"
+                className="lg:hidden -ml-1 p-1 text-slate-400 hover:text-slate-700"
+              >
+                &#8592;
+              </button>
+              <span className="truncate flex-1 font-medium">{channel.type === "dm" ? channel.label : `# ${channel.label}`}</span>
+              {channel.id?.startsWith("group:") && (() => {
+                const g = groups.find((g) => `group:${g._id}` === channel.id);
+                return g && g.createdBy?._id === user._id ? (
+                  <button
+                    onClick={() => setManageGroup(g)}
+                    className="text-xs text-slate-400 hover:text-brand-600 shrink-0"
+                  >
+                    Manage
+                  </button>
+                ) : null;
+              })()}
+            </div>
+            {dmPartner && (dmPartner.contactEmail || dmPartner.whatsappNumber) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-400">
+                {dmPartner.contactEmail && (
+                  <a href={`mailto:${dmPartner.contactEmail}`} className="hover:text-brand-600 hover:underline truncate max-w-full">
+                     {dmPartner.contactEmail}
+                  </a>
+                )}
+                {dmPartner.whatsappNumber && (
+                  <a
+                    href={`https://wa.me/${dmPartner.whatsappNumber.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-emerald-600 hover:underline truncate max-w-full"
+                  >
+                    +91 {dmPartner.whatsappNumber}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((m) => (

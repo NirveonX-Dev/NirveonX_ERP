@@ -5,6 +5,9 @@ const UserSchema = new Schema({
   name: { type: String, required: true },
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
   email: { type: String, required: true },
+  contactEmail: { type: String, default: "" }, // secondary/personal email, distinct from login email
+  whatsappNumber: { type: String, default: "" },
+  dob: { type: String, default: null }, // "YYYY-MM-DD"
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ["staff", "teamlead", "hr", "lead", "superadmin"], default: "staff" },
   deptKey: { type: String, required: true }, // appdev | webdev | devops | growth | research | hr | leadership
