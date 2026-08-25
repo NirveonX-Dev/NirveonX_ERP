@@ -51,6 +51,21 @@ async function syncRosterForLeave(leave, markAsLeave) {
   }
 }
 
+// Used by the Chat page to dull a person's avatar + show a leave indicator.
+// Open to any authenticated user (not just reviewers) since everyone using
+// chat needs to see who's currently out.
+router.get("/on-leave-today", async (req, res, next) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const leaves = await Leave.find({
+      status: "approved",
+      startDate: { $lte: today },
+      endDate: { $gte: today },
+    }).select("userId");
+    res.json(leaves.map((l) => l.userId));
+  } catch (err) { next(err); }
+});
+
 router.get("/", async (req, res, next) => {
   try {
     const filter = ["hr", "lead", "teamlead", "superadmin"].includes(req.user.role) ? {} : { userId: req.user._id };
