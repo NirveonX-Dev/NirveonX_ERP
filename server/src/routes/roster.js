@@ -10,7 +10,11 @@ router.get("/", async (req, res, next) => {
     const filter = {};
     if (req.query.weekStart) filter.weekStart = req.query.weekStart;
     const rows = await Roster.find(filter).populate("userId", "name avatarColor deptKey");
-    res.json(rows);
+    // If a user was deleted without their roster rows being cleaned up (old
+    // data from before this was fixed), populate() resolves userId to null.
+    // Drop those instead of sending them to the client, where nothing
+    // upstream expects a null user and would crash on render.
+    res.json(rows.filter((r) => r.userId));
   } catch (err) { next(err); }
 });
 

@@ -1,6 +1,10 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const Roster = require("../models/Roster");
+const DeviceToken = require("../models/DeviceToken");
+const ChatReadState = require("../models/ChatReadState");
+const ChatGroup = require("../models/ChatGroup");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
@@ -93,6 +97,19 @@ router.delete("/:id", requireRole("hr", "lead", "superadmin"), async (req, res, 
     }
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Clean up data that references this user by id. Without this, any page
+    // that populates a userId ref and renders it (Roster, Chat groups, etc.)
+    // gets a null back where it expected a user object and crashes on
+    // render - this is what caused the Roster "black page" bug. Leave
+    // requests and performance logs are kept as historical/audit records.
+    await Promise.all([
+      Roster.deleteMany({ userId: user._id }),
+      DeviceToken.deleteMany({ userId: user._id }),
+      ChatReadState.deleteMany({ userId: user._id }),
+      ChatGroup.updateMany({ members: user._id }, { $pull: { members: user._id } }),
+    ]);
+
     res.json({ success: true });
   } catch (err) {
     next(err);

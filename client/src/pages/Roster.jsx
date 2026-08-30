@@ -34,7 +34,7 @@ export default function Roster() {
   useEffect(() => { api.get("/users").then((res) => setUsers(res.data)); }, []);
 
   async function setDay(userId, dayKey, value) {
-    const existing = rows.find((r) => r.userId._id === userId);
+    const existing = rows.find((r) => r.userId?._id === userId);
     const days = existing ? { ...existing.days } : { mon: "wfh", tue: "wfh", wed: "wfh", thu: "wfh", fri: "wfh", sat: "wfh", sun: "wfh" };
     days[dayKey] = value;
     await api.put("/roster", { userId, weekStart, days });
@@ -42,9 +42,9 @@ export default function Roster() {
   }
 
   function dayValue(userId, dayKey) {
-    const existing = rows.find((r) => r.userId._id === userId);
+    const existing = rows.find((r) => r.userId?._id === userId);
     if (existing?.days?.[dayKey]) return existing.days[dayKey];
-    return dayKey === "sat" || dayKey === "sun" ? "wfh" : "wfh"; //off : wfh
+    return "wfh";
   }
 
   return (
