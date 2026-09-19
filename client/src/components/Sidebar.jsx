@@ -19,7 +19,7 @@ const NAV = [
   { to: "/chat", label: "Team Chat", roles: null },
   { to: "/leaderboard", label: "Leaderboard", roles: null },
   { to: "/performance", label: "Team Performance", roles: ["hr", "lead", "teamlead", "superadmin"] },
-  { to: "/users", label: "Users", roles: ["hr", "lead", "superadmin"] },
+  { to: "/users", label: "Employees", roles: ["hr", "lead", "superadmin"] },
 ];
 
 export default function Sidebar({ open, onClose }) {

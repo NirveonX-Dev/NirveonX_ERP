@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Users from "./pages/Users";
+import EmployeeProfile from "./pages/EmployeeProfile";
 import Leaves from "./pages/Leaves";
 import Certificates from "./pages/Certificates";
 import Appraisals from "./pages/Appraisals";
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/performance" element={<ProtectedRoute roles={["hr", "lead", "teamlead", "superadmin"]}><TeamPerformance /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute roles={["hr", "lead", "superadmin"]}><Users /></ProtectedRoute>} />
+          <Route path="/users/:id" element={<ProtectedRoute><EmployeeProfile /></ProtectedRoute>} />
         </Routes>
         </ChatUnreadProvider>
       </AuthProvider>
