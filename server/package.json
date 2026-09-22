@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "backfill:employee-ids": "node src/scripts/backfillEmployeeIds.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

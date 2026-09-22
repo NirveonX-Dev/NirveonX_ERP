@@ -23,16 +23,31 @@ const departmentRoutes = require("./routes/departments");
 const notificationRoutes = require("./routes/notifications");
 const dashboardRoutes = require("./routes/dashboard");
 
+const publicRoutes = require("./routes/public");
+
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
-  .split(",")
-  .map((s) => s.trim());
+const allowedOrigins = [...new Set(
+  `${process.env.CLIENT_ORIGIN || "http://localhost:5173"},${process.env.PUBLIC_CLIENT_ORIGIN || "http://localhost:5174,https://teams.nirveonx.one"}`
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+)];
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+app.use("/api/public", publicRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
