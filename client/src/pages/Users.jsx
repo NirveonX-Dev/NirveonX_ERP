@@ -6,7 +6,7 @@ import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
 const EMPTY_FORM = {
-  name: "", username: "", email: "", contactEmail: "", whatsappNumber: "", dob: "", password: "", role: "staff", deptKey: "appdev",
+  name: "", username: "", email: "", employeeId: "", contactEmail: "", whatsappNumber: "", dob: "", password: "", role: "staff", deptKey: "appdev",
   title: "", employmentType: "fulltime", internshipEndDate: "",
 };
 
@@ -18,6 +18,9 @@ export default function Users() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
+
+  const activeUsers = users.filter((u) => !u.isBlocked);
+  const blockedUsers = users.filter((u) => u.isBlocked);
 
   function load() {
     api.get("/users").then((res) => setUsers(res.data));
@@ -46,12 +49,16 @@ export default function Users() {
     e.preventDefault();
     setError("");
     try {
+      const body = { ...form };
+      // Blank means "leave as-is" / "not assigned yet" - never send an empty
+      // string, since that would collide with every other blank employeeId
+      // against the unique index once a second person is also left blank.
+      if (!body.employeeId || !body.employeeId.trim()) delete body.employeeId;
       if (editing) {
-        const body = { ...form };
         if (!body.password) delete body.password;
         await api.put(`/users/${editing._id}`, body);
       } else {
-        await api.post("/users", form);
+        await api.post("/users", body);
       }
       setOpen(false);
       load();
@@ -79,19 +86,19 @@ export default function Users() {
         <button className="btn-primary" onClick={openCreate}>Add user</button>
       </div>
       <div className="card overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[680px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Name</th>
+              <th className="text-left px-4 py-2 font-medium">Employee ID</th>
               <th className="text-left px-4 py-2 font-medium">Username</th>
               <th className="text-left px-4 py-2 font-medium">Role</th>
               <th className="text-left px-4 py-2 font-medium">Department</th>
-              <th className="text-left px-4 py-2 font-medium">Status</th>
               <th className="text-right px-4 py-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {activeUsers.map((u) => (
               <tr key={u._id} className="border-t border-slate-100">
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
@@ -99,25 +106,19 @@ export default function Users() {
                     <span>{u.name}</span>
                   </div>
                 </td>
+                <td className="px-4 py-2 text-slate-500">{u.employeeId || <span className="text-slate-300">Not set</span>}</td>
                 <td className="px-4 py-2 text-slate-500">{u.username}</td>
                 <td className="px-4 py-2 capitalize">{u.role}</td>
                 <td className="px-4 py-2">{u.deptKey}</td>
                 <td className="px-4 py-2">
-                  {u.isBlocked ? (
-                    <span className="badge bg-red-50 text-red-700">Blocked</span>
-                  ) : (
-                    <span className="badge bg-emerald-50 text-emerald-700">Active</span>
-                  )}
-                </td>
-                <td className="px-4 py-2">
                   <div className="flex justify-end gap-2">
                     <button className="text-brand-600 hover:underline text-xs" onClick={() => openEdit(u)}>Edit</button>
                     <button
-                      className={`text-xs hover:underline ${u.isBlocked ? "text-emerald-600" : "text-amber-600"}`}
+                      className="text-xs hover:underline text-amber-600"
                       onClick={() => toggleBlock(u)}
                       disabled={u._id === me._id}
                     >
-                      {u.isBlocked ? "Unblock" : "Block"}
+                      Block
                     </button>
                     <button className="text-red-600 hover:underline text-xs" onClick={() => handleDelete(u)} disabled={u._id === me._id}>
                       Delete
@@ -126,9 +127,60 @@ export default function Users() {
                 </td>
               </tr>
             ))}
+            {activeUsers.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">No active employees</td></tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {blockedUsers.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-slate-500 mb-1">Previously Worked Employees</h2>
+          <p className="text-xs text-slate-400 mb-3">Blocked accounts, no longer able to log in to the ERP.</p>
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm min-w-[680px]">
+              <thead className="bg-slate-50 text-slate-500 text-xs">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium">Name</th>
+                  <th className="text-left px-4 py-2 font-medium">Employee ID</th>
+                  <th className="text-left px-4 py-2 font-medium">Username</th>
+                  <th className="text-left px-4 py-2 font-medium">Role</th>
+                  <th className="text-left px-4 py-2 font-medium">Department</th>
+                  <th className="text-right px-4 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {blockedUsers.map((u) => (
+                  <tr key={u._id} className="border-t border-slate-100 opacity-70">
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar user={u} size={7} />
+                        <span>{u.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-slate-500">{u.employeeId || <span className="text-slate-300">Not set</span>}</td>
+                    <td className="px-4 py-2 text-slate-500">{u.username}</td>
+                    <td className="px-4 py-2 capitalize">{u.role}</td>
+                    <td className="px-4 py-2">{u.deptKey}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex justify-end gap-2">
+                        <button className="text-brand-600 hover:underline text-xs" onClick={() => openEdit(u)}>Edit</button>
+                        <button className="text-xs hover:underline text-emerald-600" onClick={() => toggleBlock(u)}>
+                          Unblock
+                        </button>
+                        <button className="text-red-600 hover:underline text-xs" onClick={() => handleDelete(u)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? "Edit user" : "Add user"}>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -141,6 +193,10 @@ export default function Users() {
             <div>
               <label className="label">Username</label>
               <input className="input" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Employee ID (optional)</label>
+              <input className="input" placeholder="e.g. EMP001" value={form.employeeId || ""} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} />
             </div>
             <div>
               <label className="label">Email (login)</label>

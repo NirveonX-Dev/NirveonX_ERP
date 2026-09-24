@@ -33,7 +33,7 @@ router.get("/:id", async (req, res, next) => {
 // Only HR/leadership can create, edit, delete, or block users
 router.post("/", requireRole("hr", "lead", "superadmin"), async (req, res, next) => {
   try {
-    const { name, username, email, contactEmail, whatsappNumber, dob, password, role, deptKey, title, employmentType, internshipEndDate, avatarColor } = req.body;
+    const { name, username, email, employeeId, contactEmail, whatsappNumber, dob, password, role, deptKey, title, employmentType, internshipEndDate, avatarColor } = req.body;
     if (!name || !username || !email || !password || !deptKey) {
       return res.status(400).json({ error: "name, username, email, password, deptKey are required" });
     }
@@ -43,6 +43,7 @@ router.post("/", requireRole("hr", "lead", "superadmin"), async (req, res, next)
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, email, passwordHash, deptKey, title: title || "",
+      employeeId: employeeId && employeeId.trim() ? employeeId.trim() : undefined,
       contactEmail: contactEmail || "",
       whatsappNumber: whatsappNumber || "",
       dob: dob || null,
@@ -54,6 +55,9 @@ router.post("/", requireRole("hr", "lead", "superadmin"), async (req, res, next)
     });
     res.status(201).json(user.toSafeJSON());
   } catch (err) {
+    if (err.code === 11000 && err.keyPattern?.employeeId) {
+      return res.status(409).json({ error: "That Employee ID is already assigned to someone else" });
+    }
     next(err);
   }
 });
@@ -67,10 +71,22 @@ router.put("/:id", requireRole("hr", "lead", "superadmin"), async (req, res, nex
       delete updates.password;
     }
     if (updates.username) updates.username = updates.username.toLowerCase().trim();
+    if ("employeeId" in updates) {
+      if (updates.employeeId && updates.employeeId.trim()) {
+        updates.employeeId = updates.employeeId.trim();
+      } else {
+        // Blank submission means "leave as-is", not "clear it" - deleting the
+        // key here means this update simply won't touch the existing value.
+        delete updates.employeeId;
+      }
+    }
     const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json(user.toSafeJSON());
   } catch (err) {
+    if (err.code === 11000 && err.keyPattern?.employeeId) {
+      return res.status(409).json({ error: "That Employee ID is already assigned to someone else" });
+    }
     next(err);
   }
 });

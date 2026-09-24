@@ -5,6 +5,10 @@ const UserSchema = new Schema({
   name: { type: String, required: true },
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
   email: { type: String, required: true },
+  // Entered manually by HR when creating/editing a user, same as title, deptKey,
+  // etc. Never auto-generated - sparse+unique just stops two people from
+  // accidentally being given the same ID, without forcing every user to have one.
+  employeeId: { type: String, trim: true, unique: true, sparse: true },
   contactEmail: { type: String, default: "" }, // secondary/personal email, distinct from login email
   whatsappNumber: { type: String, default: "" },
   dob: { type: String, default: null }, // "YYYY-MM-DD"
@@ -36,6 +40,18 @@ UserSchema.methods.toSafeJSON = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
   return obj;
+};
+
+// Used only by the unauthenticated public employee-directory endpoint.
+// Deliberately whitelists just these three fields - never widen this without
+// checking routes/public.js, since anything added here becomes visible to
+// anyone on the internet, logged in or not.
+UserSchema.methods.toPublicJSON = function () {
+  return {
+    employeeId: this.employeeId || "",
+    name: this.name,
+    designation: this.title || "",
+  };
 };
 
 module.exports = mongoose.model("User", UserSchema);

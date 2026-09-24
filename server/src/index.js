@@ -22,12 +22,21 @@ const performanceRoutes = require("./routes/performance");
 const departmentRoutes = require("./routes/departments");
 const notificationRoutes = require("./routes/notifications");
 const dashboardRoutes = require("./routes/dashboard");
+const publicRoutes = require("./routes/public");
 
 const app = express();
 
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
   .split(",")
   .map((s) => s.trim());
+
+// The public employee directory has its own permissive CORS and sits ahead of
+// the app-wide restrictive CORS below - it's intentionally readable from any
+// origin (the separate team-showcase site, or anywhere else), carries no
+// cookies/credentials, and only ever returns the 3 non-sensitive fields
+// whitelisted in User.toPublicJSON(). Every other route stays locked to
+// CLIENT_ORIGIN as before.
+app.use("/api/public", cors(), express.json(), publicRoutes);
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
