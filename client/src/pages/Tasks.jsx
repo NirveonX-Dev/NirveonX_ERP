@@ -39,8 +39,11 @@ export default function Tasks() {
       ...form,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       dueDate: form.dueDate || null,
+      // The form picks a single assignee for convenience; store it as the
+      // assignees array (the source of truth). Add more via the board/detail panel.
+      assignees: form.assigneeId ? [form.assigneeId] : [],
     };
-    if (!body.assigneeId) delete body.assigneeId;
+    delete body.assigneeId;
     await api.post("/tasks", body);
     setOpen(false);
     setForm(EMPTY_FORM);
@@ -108,7 +111,16 @@ export default function Tasks() {
                     )}
 
                     <div className="flex items-center justify-between mt-3">
-                      {t.assigneeId ? <Avatar user={t.assigneeId} size={6} /> : <span className="text-xs text-slate-400">Unassigned</span>}
+                      {(() => {
+                        const list = t.assignees && t.assignees.length ? t.assignees : (t.assigneeId ? [t.assigneeId] : []);
+                        return list.length > 0 ? (
+                          <div className="flex -space-x-1">
+                            {list.map((a) => (
+                              <div key={a._id} className="ring-2 ring-white rounded-full"><Avatar user={a} size={6} /></div>
+                            ))}
+                          </div>
+                        ) : <span className="text-xs text-slate-400">Unassigned</span>;
+                      })()}
                       <select
                         className="text-xs border border-slate-200 rounded px-1 py-0.5"
                         value={t.status}

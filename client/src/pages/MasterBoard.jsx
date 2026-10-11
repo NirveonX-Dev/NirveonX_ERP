@@ -27,7 +27,8 @@ export default function MasterBoard() {
 
   const [selected, setSelected] = useState(new Set());
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignTo, setAssignTo] = useState("");
+  const [assignPick, setAssignPick] = useState(new Set()); // user ids to assign
+  const [assignMode, setAssignMode] = useState("set"); // set | add
   const [detail, setDetail] = useState(null);
 
   function load() {
@@ -36,6 +37,9 @@ export default function MasterBoard() {
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [project]);
   useEffect(() => { api.get("/users").then((res) => setUsers(res.data)); }, []);
+
+  // assignees array, falling back to the legacy single assigneeId for old tasks.
+  const assigneesOf = (t) => (t.assignees && t.assignees.length ? t.assignees : (t.assigneeId ? [t.assigneeId] : []));
 
   const counts = useMemo(() => {
     const c = {};
@@ -52,8 +56,24 @@ export default function MasterBoard() {
   }
   const clearSel = () => setSelected(new Set());
 
+  function toggleAssignPick(id) {
+    setAssignPick((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function openAssign() {
+    setAssignPick(new Set());
+    setAssignMode("set");
+    setAssignOpen(true);
+  }
   async function bulkAssign() {
-    await api.post("/tasks/assign", { taskIds: [...selected], assigneeId: assignTo || null });
+    await api.post("/tasks/assign", {
+      taskIds: [...selected],
+      assigneeIds: [...assignPick],
+      mode: assignMode,
+    });
     setAssignOpen(false);
     clearSel();
     load();
@@ -90,7 +110,7 @@ export default function MasterBoard() {
           <>
             <span className="text-sm text-slate-500">{selected.size} selected</span>
             <button className="btn-secondary" onClick={clearSel}>Clear</button>
-            <button className="btn-primary" onClick={() => { setAssignTo(""); setAssignOpen(true); }}>Assign…</button>
+            <button className="btn-primary" onClick={openAssign}>Assign…</button>
           </>
         )}
       </div>
@@ -141,8 +161,18 @@ export default function MasterBoard() {
               )}
 
               <div className="mt-3 flex items-center gap-2">
-                {t.assigneeId ? <><Avatar user={t.assigneeId} size={6} /><span className="text-xs text-slate-500">{t.assigneeId.name}</span></>
-                  : <span className="text-xs text-slate-400">Unassigned</span>}
+                {assigneesOf(t).length > 0 ? (
+                  <>
+                    <div className="flex -space-x-1">
+                      {assigneesOf(t).map((a) => (
+                        <div key={a._id} className="ring-2 ring-white rounded-full"><Avatar user={a} size={6} /></div>
+                      ))}
+                    </div>
+                    <span className="text-xs text-slate-500 truncate">
+                      {assigneesOf(t).map((a) => a.name).join(", ")}
+                    </span>
+                  </>
+                ) : <span className="text-xs text-slate-400">Unassigned</span>}
               </div>
             </div>
           );
@@ -152,17 +182,39 @@ export default function MasterBoard() {
         )}
       </div>
 
-      {/* bulk assign modal */}
+      {/* bulk assign modal — multi-select */}
       <Modal open={assignOpen} onClose={() => setAssignOpen(false)} title={`Assign ${selected.size} ticket${selected.size > 1 ? "s" : ""}`}>
         <div className="space-y-3">
-          <label className="label">Assign to</label>
-          <select className="input" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
-            <option value="">Unassign</option>
-            {users.map((u) => <option key={u._id} value={u._id}>{u.name} — {u.title || u.deptKey}</option>)}
-          </select>
+          <div className="flex gap-2 text-sm">
+            <button
+              className={`px-3 py-1 rounded ${assignMode === "set" ? "bg-brand-600 text-white" : "bg-slate-100"}`}
+              onClick={() => setAssignMode("set")}
+            >Replace</button>
+            <button
+              className={`px-3 py-1 rounded ${assignMode === "add" ? "bg-brand-600 text-white" : "bg-slate-100"}`}
+              onClick={() => setAssignMode("add")}
+            >Add to existing</button>
+          </div>
+          <p className="text-xs text-slate-400">
+            {assignMode === "set"
+              ? "Replace the assignees on the selected tickets with the people you pick (pick none to unassign)."
+              : "Add the people you pick to whoever is already on the selected tickets."}
+          </p>
+          <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+            {users.map((u) => (
+              <label key={u._id} className="flex items-center gap-3 py-2 cursor-pointer">
+                <input type="checkbox" checked={assignPick.has(u._id)} onChange={() => toggleAssignPick(u._id)} />
+                <Avatar user={u} size={7} />
+                <span className="text-sm flex-1">{u.name}</span>
+                <span className="text-xs text-slate-400">{u.title || u.deptKey}</span>
+              </label>
+            ))}
+          </div>
           <div className="flex justify-end gap-2 pt-1">
             <button className="btn-secondary" onClick={() => setAssignOpen(false)}>Cancel</button>
-            <button className="btn-primary" onClick={bulkAssign}>Apply</button>
+            <button className="btn-primary" onClick={bulkAssign} disabled={assignMode === "add" && assignPick.size === 0}>
+              {assignMode === "set" ? (assignPick.size === 0 ? "Unassign all" : `Set ${assignPick.size}`) : `Add ${assignPick.size}`}
+            </button>
           </div>
         </div>
       </Modal>
