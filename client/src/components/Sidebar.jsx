@@ -4,6 +4,7 @@ import { useChatUnread } from "../context/ChatUnreadContext";
 
 const NAV = [
   { to: "/", label: "Dashboard", roles: null },
+  { to: "/masterboard", label: "Master Board", roles: null },
   { to: "/tasks", label: "Tasks", roles: null },
   { to: "/leaves", label: "Leaves", roles: null },
   { to: "/certificates", label: "Certificates", roles: null },

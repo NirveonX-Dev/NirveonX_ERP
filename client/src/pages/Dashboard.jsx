@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [interns, setInterns] = useState([]);
   const [overview, setOverview] = useState(null);
+  const [myTickets, setMyTickets] = useState([]);
 
   useEffect(() => {
     api.get("/dashboard/summary").then((res) => setSummary(res.data));
@@ -44,6 +45,7 @@ export default function Dashboard() {
       api.get("/notifications/internships-ending").then((res) => setInterns(res.data));
     }
     api.get("/dashboard/overview").then((res) => setOverview(res.data));
+    api.get("/tasks/mine").then((res) => setMyTickets(res.data)).catch(() => {});
   }, [user, canReview]);
 
   return (
@@ -52,6 +54,27 @@ export default function Dashboard() {
         <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">
           <strong>{interns.length}</strong> internship{interns.length > 1 ? "s" : ""} ending within 3 days:{" "}
           {interns.map((i) => i.name).join(", ")}
+        </div>
+      )}
+
+      {myTickets.length > 0 && (
+        <div className="mb-4 card p-4 border-l-4 border-l-brand-500">
+          <SectionHeader title={`🎯 Your tickets (${myTickets.length})`} linkTo="/tasks" linkLabel="Open tasks" />
+          <div className="divide-y divide-slate-100">
+            {myTickets.slice(0, 5).map((t) => (
+              <Link key={t._id} to="/tasks" className="py-2.5 flex items-center gap-3 text-sm hover:bg-slate-50 -mx-1 px-1 rounded">
+                <span className="text-[11px] font-mono text-slate-400 shrink-0 w-12">{t.ticketKey}</span>
+                <span className="flex-1 min-w-0 truncate">{t.title}</span>
+                {t.dueDate && <span className="text-xs text-slate-400 shrink-0">{t.dueDate}</span>}
+                <span className={`badge shrink-0 ${t.priority === "high" ? "bg-red-50 text-red-700" : t.priority === "medium" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                  {t.status}
+                </span>
+              </Link>
+            ))}
+          </div>
+          {myTickets.length > 5 && (
+            <div className="text-xs text-slate-400 mt-2">+{myTickets.length - 5} more</div>
+          )}
         </div>
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">

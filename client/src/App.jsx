@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import MasterBoard from "./pages/MasterBoard";
 import Tasks from "./pages/Tasks";
 import Users from "./pages/Users";
 import Leaves from "./pages/Leaves";
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/masterboard" element={<ProtectedRoute><MasterBoard /></ProtectedRoute>} />
           <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
           <Route path="/leaves" element={<ProtectedRoute><Leaves /></ProtectedRoute>} />
           <Route path="/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
