@@ -16,7 +16,8 @@ const PRIORITY_BADGE = {
 // kanban and the Master Board. `canAssign` (superadmin) shows the assignee
 // picker; everyone can tag a teammate about the ticket (posts a DM).
 export default function TaskDetailPanel({ task, users = [], onClose, onChange }) {
-  const { isSuperAdmin } = useAuth();
+  // Team leads and above (teamlead/lead/hr/superadmin) can (re)assign from here.
+  const { canReview: canAssign } = useAuth();
   const [tagMsg, setTagMsg] = useState("");
   const [tagged, setTagged] = useState([]); // [{_id, name, avatarColor}] resolved from @mentions
   const [tagDone, setTagDone] = useState(false);
@@ -153,7 +154,7 @@ export default function TaskDetailPanel({ task, users = [], onClose, onChange })
           {/* assignment */}
           <div>
             <label className="label">Assignee</label>
-            {isSuperAdmin ? (
+            {canAssign ? (
               <select className="input" value={task.assigneeId?._id || ""} onChange={(e) => setAssignee(e.target.value)}>
                 <option value="">Unassigned</option>
                 {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}

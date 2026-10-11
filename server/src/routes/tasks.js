@@ -15,15 +15,17 @@ function dmChannelId(a, b) {
   return `dm:${x}_${y}`;
 }
 
-// Next sequential ticket key: V-1, V-2, ... Derive the max numeric suffix so
-// deletions never cause a collision.
-async function nextTicketKey() {
-  const rows = await Task.find({ ticketKey: /^V-\d+$/ }).select("ticketKey").lean();
+// Next sequential ticket key, scoped per project: Master App -> MA-1, MA-2, ...
+// Derive the max numeric suffix for that prefix so deletions never collide.
+async function nextTicketKey(project) {
+  const prefix = Task.PROJECT_PREFIX[project] || "V";
+  const re = new RegExp(`^${prefix}-\\d+$`);
+  const rows = await Task.find({ ticketKey: re }).select("ticketKey").lean();
   const max = rows.reduce((m, t) => {
     const n = parseInt((t.ticketKey || "").split("-")[1], 10);
     return Number.isFinite(n) && n > m ? n : m;
   }, 0);
-  return `V-${max + 1}`;
+  return `${prefix}-${max + 1}`;
 }
 
 // The hardcoded project list (mirror of the enum on the model), for the filter UI.
@@ -45,17 +47,20 @@ router.get("/", async (req, res, next) => {
     if (req.query.deptKey) filter.deptKey = req.query.deptKey;
     if (req.query.project) filter.project = req.query.project;
     if (req.query.assigneeId) filter.assigneeId = req.query.assigneeId;
+    // Ascending by creation = tickets read top-to-bottom in the order they were
+    // made (MA-1, MA-2, ... MA-28). Sorting by the string ticketKey would give
+    // MA-1, MA-10, MA-11, ... MA-2, so createdAt is the correct key here.
     const tasks = await Task.find(filter)
       .populate(POP_ASSIGNEE)
       .populate(POP_DEPENDS)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: 1 });
     res.json(tasks);
   } catch (err) { next(err); }
 });
 
 router.post("/", async (req, res, next) => {
   try {
-    const ticketKey = await nextTicketKey();
+    const ticketKey = await nextTicketKey(req.body.project);
     const task = await Task.create({ ...req.body, ticketKey, createdBy: req.user._id });
     await task.populate(POP_ASSIGNEE);
     await task.populate(POP_DEPENDS);
@@ -88,9 +93,9 @@ router.patch("/:id/status", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Bulk multi-select assign from the Master Board — superadmin only.
-// body: { taskIds: [...], assigneeId }
-router.post("/assign", requireRole("superadmin"), async (req, res, next) => {
+// Bulk multi-select assign from the Master Board — team leads and above
+// (teamlead / lead / hr / superadmin). body: { taskIds: [...], assigneeId }
+router.post("/assign", requireRole("teamlead", "lead", "hr", "superadmin"), async (req, res, next) => {
   try {
     const { taskIds = [], assigneeId = null } = req.body;
     if (!taskIds.length) return res.status(400).json({ error: "No tickets selected" });

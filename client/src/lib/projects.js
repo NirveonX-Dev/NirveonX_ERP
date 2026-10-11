@@ -3,6 +3,15 @@
 // model enum to introduce a new one.
 export const PROJECTS = ["Master App", "Master Web App", "Medzzapp Mobile", "ERP", "Other"];
 
+// Per-project ticket-key prefix (mirror of PROJECT_PREFIX in server Task model).
+export const PROJECT_PREFIX = {
+  "Master App": "MA",
+  "Master Web App": "MWA",
+  "Medzzapp Mobile": "MM",
+  ERP: "ERP",
+  Other: "V",
+};
+
 export const PROJECT_COLORS = {
   "Master App": "bg-brand-50 text-brand-700",
   "Master Web App": "bg-indigo-50 text-indigo-700",
