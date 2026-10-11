@@ -5,7 +5,6 @@ import Avatar from "../components/Avatar";
 import TaskDetailPanel from "../components/TaskDetailPanel";
 import api from "../lib/api";
 import { PROJECTS, PROJECT_COLORS } from "../lib/projects";
-import { useAuth } from "../context/AuthContext";
 
 const COLUMNS = [
   { key: "backlog", label: "Backlog" },
@@ -25,7 +24,6 @@ const EMPTY_FORM = {
 };
 
 export default function Tasks() {
-  const { isSuperAdmin } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);

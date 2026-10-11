@@ -19,7 +19,8 @@ const STATUS_LABEL = { backlog: "Backlog", todo: "To do", inprogress: "In progre
 // that opens the full ticket in the shared right-side detail panel. Assigning
 // here writes to the same Task, so it shows up in that person's Tasks kanban.
 export default function MasterBoard() {
-  const { isSuperAdmin } = useAuth();
+  // Team leads and above (teamlead/lead/hr/superadmin) can assign + manage the board.
+  const { canReview: canAssign } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [project, setProject] = useState("Master App");
@@ -85,7 +86,7 @@ export default function MasterBoard() {
           ))}
         </div>
         <div className="flex-1" />
-        {isSuperAdmin && selected.size > 0 && (
+        {canAssign && selected.size > 0 && (
           <>
             <span className="text-sm text-slate-500">{selected.size} selected</span>
             <button className="btn-secondary" onClick={clearSel}>Clear</button>
@@ -109,7 +110,7 @@ export default function MasterBoard() {
           return (
             <div key={t._id} className={`card p-4 ${selected.has(t._id) ? "ring-2 ring-brand-500" : ""}`}>
               <div className="flex items-start gap-2">
-                {isSuperAdmin && (
+                {canAssign && (
                   <input type="checkbox" className="mt-1 shrink-0" checked={selected.has(t._id)} onChange={() => toggle(t._id)} />
                 )}
                 <div className="min-w-0 flex-1">

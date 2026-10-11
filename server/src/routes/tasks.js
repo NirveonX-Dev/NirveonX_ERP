@@ -93,9 +93,9 @@ router.patch("/:id/status", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Bulk multi-select assign from the Master Board — superadmin only.
-// body: { taskIds: [...], assigneeId }
-router.post("/assign", requireRole("superadmin"), async (req, res, next) => {
+// Bulk multi-select assign from the Master Board — team leads and above
+// (teamlead / lead / hr / superadmin). body: { taskIds: [...], assigneeId }
+router.post("/assign", requireRole("teamlead", "lead", "hr", "superadmin"), async (req, res, next) => {
   try {
     const { taskIds = [], assigneeId = null } = req.body;
     if (!taskIds.length) return res.status(400).json({ error: "No tickets selected" });
