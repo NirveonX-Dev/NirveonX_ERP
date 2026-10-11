@@ -122,29 +122,36 @@ router.post("/assign", requireRole("superadmin"), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Tag someone about a ticket — posts a DM to them referencing the ticket, so a
-// ticket can be raised in conversation. body: { userId, message }
+// Tag one or more teammates about a ticket — DMs each of them the message
+// (which itself contains the @mentions) prefixed with the ticket reference, so
+// a ticket can be raised in conversation. body: { userIds: [...], message }
+// (userId singular still accepted for back-compat).
 router.post("/:id/tag", async (req, res, next) => {
   try {
-    const { userId, message = "" } = req.body;
-    if (!userId) return res.status(400).json({ error: "userId is required" });
+    let { userIds, userId, message = "" } = req.body;
+    if (!userIds) userIds = userId ? [userId] : [];
+    userIds = [...new Set(userIds.map(String))].filter(Boolean);
+    if (!userIds.length) return res.status(400).json({ error: "Tag at least one teammate" });
+
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
 
     const ref = `[${task.ticketKey || "ticket"}] ${task.title}`;
-    const text = message ? `${ref}\n${message}` : ref;
+    const text = message.trim() ? `${ref}\n${message.trim()}` : ref;
 
-    const channelId = dmChannelId(req.user._id, userId);
-    const msg = await ChatMessage.create({ channelId, senderId: req.user._id, text });
-    await msg.populate("senderId", "name avatarColor title");
+    // One DM per tagged teammate (reuses the existing dm:x_y chat channel).
+    await Promise.all(userIds.map(async (uid) => {
+      const channelId = dmChannelId(req.user._id, uid);
+      await ChatMessage.create({ channelId, senderId: req.user._id, text });
+    }));
 
-    sendPushToUser(userId, {
+    sendPushToUsers(userIds, {
       title: `${req.user.name} tagged you on a ticket`,
       body: ref.length > 100 ? `${ref.slice(0, 97)}...` : ref,
       url: "/chat",
     });
 
-    res.status(201).json({ success: true, message: msg });
+    res.status(201).json({ success: true, taggedCount: userIds.length });
   } catch (err) { next(err); }
 });
 
