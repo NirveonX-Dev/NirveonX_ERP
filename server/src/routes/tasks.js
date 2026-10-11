@@ -47,10 +47,13 @@ router.get("/", async (req, res, next) => {
     if (req.query.deptKey) filter.deptKey = req.query.deptKey;
     if (req.query.project) filter.project = req.query.project;
     if (req.query.assigneeId) filter.assigneeId = req.query.assigneeId;
+    // Ascending by creation = tickets read top-to-bottom in the order they were
+    // made (MA-1, MA-2, ... MA-28). Sorting by the string ticketKey would give
+    // MA-1, MA-10, MA-11, ... MA-2, so createdAt is the correct key here.
     const tasks = await Task.find(filter)
       .populate(POP_ASSIGNEE)
       .populate(POP_DEPENDS)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: 1 });
     res.json(tasks);
   } catch (err) { next(err); }
 });
