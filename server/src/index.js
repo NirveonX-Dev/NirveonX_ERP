@@ -22,7 +22,6 @@ const performanceRoutes = require("./routes/performance");
 const departmentRoutes = require("./routes/departments");
 const notificationRoutes = require("./routes/notifications");
 const dashboardRoutes = require("./routes/dashboard");
-const masterBoardRoutes = require("./routes/masterboard");
 const publicRoutes = require("./routes/public");
 
 const app = express();
@@ -63,7 +62,6 @@ app.use("/api/performance", performanceRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/masterboard", masterBoardRoutes);
 
 // 404 for unknown API routes
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));

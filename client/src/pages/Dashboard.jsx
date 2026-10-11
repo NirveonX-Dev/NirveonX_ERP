@@ -45,7 +45,7 @@ export default function Dashboard() {
       api.get("/notifications/internships-ending").then((res) => setInterns(res.data));
     }
     api.get("/dashboard/overview").then((res) => setOverview(res.data));
-    api.get("/masterboard/mine").then((res) => setMyTickets(res.data)).catch(() => {});
+    api.get("/tasks/mine").then((res) => setMyTickets(res.data)).catch(() => {});
   }, [user, canReview]);
 
   return (
@@ -59,11 +59,11 @@ export default function Dashboard() {
 
       {myTickets.length > 0 && (
         <div className="mb-4 card p-4 border-l-4 border-l-brand-500">
-          <SectionHeader title={`🎯 Your Master App tickets (${myTickets.length})`} linkTo="/masterboard" linkLabel="Open board" />
+          <SectionHeader title={`🎯 Your tickets (${myTickets.length})`} linkTo="/tasks" linkLabel="Open tasks" />
           <div className="divide-y divide-slate-100">
             {myTickets.slice(0, 5).map((t) => (
-              <Link key={t._id} to="/masterboard" className="py-2.5 flex items-center gap-3 text-sm hover:bg-slate-50 -mx-1 px-1 rounded">
-                <span className="text-[11px] font-mono text-slate-400 shrink-0 w-12">{t.key}</span>
+              <Link key={t._id} to="/tasks" className="py-2.5 flex items-center gap-3 text-sm hover:bg-slate-50 -mx-1 px-1 rounded">
+                <span className="text-[11px] font-mono text-slate-400 shrink-0 w-12">{t.ticketKey}</span>
                 <span className="flex-1 min-w-0 truncate">{t.title}</span>
                 {t.dueDate && <span className="text-xs text-slate-400 shrink-0">{t.dueDate}</span>}
                 <span className={`badge shrink-0 ${t.priority === "high" ? "bg-red-50 text-red-700" : t.priority === "medium" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
@@ -73,7 +73,7 @@ export default function Dashboard() {
             ))}
           </div>
           {myTickets.length > 5 && (
-            <div className="text-xs text-slate-400 mt-2">+{myTickets.length - 5} more on the board</div>
+            <div className="text-xs text-slate-400 mt-2">+{myTickets.length - 5} more</div>
           )}
         </div>
       )}
@@ -81,7 +81,7 @@ export default function Dashboard() {
         <KpiCard label="Total employees" value={summary?.totalEmployees ?? "..."} />
         <KpiCard label="Active interns" value={summary?.activeInterns ?? "..."} />
         <KpiCard label="Pending approvals" value={summary?.pendingApprovals ?? "..."} />
-        <KpiCard label="My master tickets" value={summary?.myMasterTickets ?? "..."} />
+        <KpiCard label="Open tickets" value={summary?.openTickets ?? "..."} />
         <KpiCard label="My open tasks" value={summary?.myOpenTasks ?? "..."} />
       </div>
 
