@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "seed": "node seed.js",
-    "seed:master-tickets": "node scripts/seedMasterAppTickets.js"
+    "seed:master-tickets": "node scripts/seedMasterAppTickets.js",
+    "seed:webapp-ticket": "node scripts/seedWebAppTicket.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
