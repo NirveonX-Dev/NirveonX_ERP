@@ -7,8 +7,14 @@ const { sendPushToUser, sendPushToUsers } = require("../utils/push");
 const router = express.Router();
 router.use(requireAuth);
 
-const POP_ASSIGNEE = { path: "assigneeId", select: "name avatarColor title" };
+const POP_ASSIGNEES = { path: "assignees", select: "name avatarColor title" };
+const POP_ASSIGNEE = { path: "assigneeId", select: "name avatarColor title" }; // legacy
 const POP_DEPENDS = { path: "dependsOn", select: "ticketKey title status" };
+
+// Keep the legacy single-assignee field in sync with the array (first assignee).
+function syncLegacyAssignee(doc) {
+  doc.assigneeId = doc.assignees && doc.assignees.length ? doc.assignees[0] : null;
+}
 
 function dmChannelId(a, b) {
   const [x, y] = [a.toString(), b.toString()].sort();
@@ -32,9 +38,13 @@ async function nextTicketKey(project) {
 router.get("/projects", (req, res) => res.json(Task.PROJECTS));
 
 // Tickets assigned to the current user (for the Dashboard reminder).
+// Matches whether the user is in the assignees array OR the legacy single field.
 router.get("/mine", async (req, res, next) => {
   try {
-    const tasks = await Task.find({ assigneeId: req.user._id, status: { $ne: "done" } })
+    const tasks = await Task.find({
+      status: { $ne: "done" },
+      $or: [{ assignees: req.user._id }, { assigneeId: req.user._id }],
+    })
       .populate(POP_DEPENDS)
       .sort({ priority: -1, dueDate: 1, createdAt: 1 });
     res.json(tasks);
@@ -46,11 +56,12 @@ router.get("/", async (req, res, next) => {
     const filter = {};
     if (req.query.deptKey) filter.deptKey = req.query.deptKey;
     if (req.query.project) filter.project = req.query.project;
-    if (req.query.assigneeId) filter.assigneeId = req.query.assigneeId;
+    if (req.query.assigneeId) filter.assignees = req.query.assigneeId;
     // Ascending by creation = tickets read top-to-bottom in the order they were
     // made (MA-1, MA-2, ... MA-28). Sorting by the string ticketKey would give
     // MA-1, MA-10, MA-11, ... MA-2, so createdAt is the correct key here.
     const tasks = await Task.find(filter)
+      .populate(POP_ASSIGNEES)
       .populate(POP_ASSIGNEE)
       .populate(POP_DEPENDS)
       .sort({ createdAt: 1 });
@@ -61,10 +72,12 @@ router.get("/", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const ticketKey = await nextTicketKey(req.body.project);
-    const task = await Task.create({ ...req.body, ticketKey, createdBy: req.user._id });
-    await task.populate(POP_ASSIGNEE);
+    const task = new Task({ ...req.body, ticketKey, createdBy: req.user._id });
+    syncLegacyAssignee(task);
+    await task.save();
+    await task.populate(POP_ASSIGNEES);
     await task.populate(POP_DEPENDS);
-    if (task.assigneeId) notifyAssignment(task);
+    notifyAssignees(task.assignees.map((a) => a._id));
     res.status(201).json(task);
   } catch (err) { next(err); }
 });
@@ -73,12 +86,20 @@ router.put("/:id", async (req, res, next) => {
   try {
     const before = await Task.findById(req.params.id).lean();
     if (!before) return res.status(404).json({ error: "Task not found" });
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
-      .populate(POP_ASSIGNEE)
-      .populate(POP_DEPENDS);
-    // Notify if the assignee changed to someone new.
-    const newAssignee = task.assigneeId?._id ? String(task.assigneeId._id) : null;
-    if (newAssignee && newAssignee !== String(before.assigneeId || "")) notifyAssignment(task);
+
+    const task = await Task.findById(req.params.id);
+    Object.assign(task, req.body);
+    if (req.body.assignees) syncLegacyAssignee(task);
+    await task.save();
+    await task.populate(POP_ASSIGNEES);
+    await task.populate(POP_DEPENDS);
+
+    // Notify anyone newly added to the assignees list.
+    if (req.body.assignees) {
+      const beforeIds = (before.assignees || []).map(String);
+      const added = task.assignees.map((a) => a._id).filter((id) => !beforeIds.includes(String(id)));
+      notifyAssignees(added);
+    }
     res.json(task);
   } catch (err) { next(err); }
 });
@@ -86,7 +107,7 @@ router.put("/:id", async (req, res, next) => {
 router.patch("/:id/status", async (req, res, next) => {
   try {
     const task = await Task.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true })
-      .populate(POP_ASSIGNEE)
+      .populate(POP_ASSIGNEES)
       .populate(POP_DEPENDS);
     if (!task) return res.status(404).json({ error: "Task not found" });
     res.json(task);
@@ -94,35 +115,51 @@ router.patch("/:id/status", async (req, res, next) => {
 });
 
 // Bulk multi-select assign from the Master Board — team leads and above
-// (teamlead / lead / hr / superadmin). body: { taskIds: [...], assigneeId }
+// (teamlead / lead / hr / superadmin).
+// body: { taskIds: [...], assigneeIds: [...], mode: "set" | "add" }
+// mode "set" replaces the assignees; "add" merges into the existing ones.
+// (assigneeId singular still accepted for back-compat.)
 router.post("/assign", requireRole("teamlead", "lead", "hr", "superadmin"), async (req, res, next) => {
   try {
-    const { taskIds = [], assigneeId = null } = req.body;
+    let { taskIds = [], assigneeIds, assigneeId, mode = "set" } = req.body;
+    if (!assigneeIds) assigneeIds = assigneeId ? [assigneeId] : [];
+    assigneeIds = [...new Set((assigneeIds || []).map(String))].filter(Boolean);
     if (!taskIds.length) return res.status(400).json({ error: "No tickets selected" });
 
     const tasks = await Task.find({ _id: { $in: taskIds } });
-    const newlyAssigned = [];
-    for (const task of tasks) {
-      const changed = String(task.assigneeId || "") !== String(assigneeId || "");
-      task.assigneeId = assigneeId || null;
-      // Pull out of backlog once it has an owner — it's now real, scheduled work.
-      if (assigneeId && task.status === "backlog") task.status = "todo";
-      await task.save();
-      if (changed && assigneeId) newlyAssigned.push(task);
-    }
+    // userId -> list of ticketKeys they were newly added to (for one push each).
+    const newlyAddedByUser = {};
 
-    if (assigneeId && newlyAssigned.length) {
-      sendPushToUser(assigneeId, {
-        title: `${newlyAssigned.length} ticket${newlyAssigned.length > 1 ? "s" : ""} assigned to you`,
-        body: newlyAssigned.map((t) => t.ticketKey).filter(Boolean).join(", "),
-        url: "/tasks",
+    for (const task of tasks) {
+      const beforeIds = task.assignees.map(String);
+      let nextIds;
+      if (mode === "add") nextIds = [...new Set([...beforeIds, ...assigneeIds])];
+      else nextIds = assigneeIds;
+
+      task.assignees = nextIds;
+      syncLegacyAssignee(task);
+      // Pull out of backlog once it has an owner — it's now real, scheduled work.
+      if (nextIds.length && task.status === "backlog") task.status = "todo";
+      await task.save();
+
+      nextIds.filter((id) => !beforeIds.includes(id)).forEach((id) => {
+        (newlyAddedByUser[id] ||= []).push(task.ticketKey);
       });
     }
 
+    // One push per newly-assigned user, listing the tickets they got.
+    Object.entries(newlyAddedByUser).forEach(([uid, keys]) => {
+      sendPushToUser(uid, {
+        title: `${keys.length} ticket${keys.length > 1 ? "s" : ""} assigned to you`,
+        body: keys.filter(Boolean).join(", "),
+        url: "/tasks",
+      });
+    });
+
     const updated = await Task.find({ _id: { $in: taskIds } })
-      .populate(POP_ASSIGNEE)
+      .populate(POP_ASSIGNEES)
       .populate(POP_DEPENDS)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: 1 });
     res.json(updated);
   } catch (err) { next(err); }
 });
@@ -168,12 +205,14 @@ router.delete("/:id", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-function notifyAssignment(task) {
-  const id = task.assigneeId?._id || task.assigneeId;
-  if (!id) return;
-  sendPushToUser(id, {
+// Push "a ticket was assigned to you" to each given user id (fire-and-forget;
+// sendPushToUsers no-ops safely if push isn't configured).
+function notifyAssignees(userIds = []) {
+  const ids = userIds.map((u) => (u && u._id ? u._id : u)).filter(Boolean);
+  if (!ids.length) return;
+  sendPushToUsers(ids, {
     title: "New ticket assigned to you",
-    body: `${task.ticketKey || ""} ${task.title}`.trim(),
+    body: "You've been assigned a ticket on the Master Board.",
     url: "/tasks",
   });
 }

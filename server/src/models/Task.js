@@ -45,6 +45,13 @@ const TaskSchema = new Schema({
   // Rough effort size (XS/S/M/L/XL) — optional, shown on the card.
   size: { type: String, enum: ["XS", "S", "M", "L", "XL", ""], default: "" },
 
+  // Assignees — a ticket can be worked by more than one person (e.g. all three
+  // interns on a shared spike). `assignees` is the source of truth.
+  assignees: [{ type: Schema.Types.ObjectId, ref: "User" }],
+
+  // Legacy single-assignee field, kept so older tasks / the original kanban
+  // data still resolve. New code reads/writes `assignees`; we mirror the first
+  // assignee here on write for backward compatibility.
   assigneeId: { type: Schema.Types.ObjectId, ref: "User", default: null },
 
   // Other tasks that must be done first ("depends on V-53").

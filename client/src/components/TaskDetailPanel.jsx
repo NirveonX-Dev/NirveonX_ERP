@@ -45,8 +45,16 @@ export default function TaskDetailPanel({ task, users = [], onClose, onChange })
 
   if (!task) return null;
 
-  async function setAssignee(assigneeId) {
-    await api.put(`/tasks/${task._id}`, { assigneeId: assigneeId || null });
+  // assignees array, falling back to the legacy single assigneeId for old tasks.
+  const assigneeList = task.assignees && task.assignees.length
+    ? task.assignees
+    : (task.assigneeId ? [task.assigneeId] : []);
+  const assigneeIdSet = new Set(assigneeList.map((a) => a._id));
+
+  async function toggleAssignee(userId) {
+    const ids = new Set(assigneeList.map((a) => a._id));
+    ids.has(userId) ? ids.delete(userId) : ids.add(userId);
+    await api.put(`/tasks/${task._id}`, { assignees: [...ids] });
     onChange?.();
   }
   async function setStatus(status) {
@@ -151,18 +159,26 @@ export default function TaskDetailPanel({ task, users = [], onClose, onChange })
 
           <hr className="border-slate-100" />
 
-          {/* assignment */}
+          {/* assignment (multiple people allowed) */}
           <div>
-            <label className="label">Assignee</label>
+            <label className="label">Assignees</label>
             {canAssign ? (
-              <select className="input" value={task.assigneeId?._id || ""} onChange={(e) => setAssignee(e.target.value)}>
-                <option value="">Unassigned</option>
-                {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
-              </select>
+              <div className="mt-1 max-h-44 overflow-y-auto border border-slate-200 rounded-md divide-y divide-slate-100">
+                {users.map((u) => (
+                  <label key={u._id} className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" checked={assigneeIdSet.has(u._id)} onChange={() => toggleAssignee(u._id)} />
+                    <Avatar user={u} size={6} />
+                    <span className="text-sm flex-1">{u.name}</span>
+                  </label>
+                ))}
+              </div>
             ) : (
-              <div className="flex items-center gap-2 mt-1">
-                {task.assigneeId ? <><Avatar user={task.assigneeId} size={7} /><span className="text-sm">{task.assigneeId.name}</span></>
-                  : <span className="text-sm text-slate-400">Unassigned</span>}
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                {assigneeList.length > 0 ? assigneeList.map((a) => (
+                  <span key={a._id} className="flex items-center gap-1.5">
+                    <Avatar user={a} size={6} /><span className="text-sm">{a.name}</span>
+                  </span>
+                )) : <span className="text-sm text-slate-400">Unassigned</span>}
               </div>
             )}
           </div>
