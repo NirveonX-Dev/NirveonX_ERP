@@ -15,15 +15,17 @@ function dmChannelId(a, b) {
   return `dm:${x}_${y}`;
 }
 
-// Next sequential ticket key: V-1, V-2, ... Derive the max numeric suffix so
-// deletions never cause a collision.
-async function nextTicketKey() {
-  const rows = await Task.find({ ticketKey: /^V-\d+$/ }).select("ticketKey").lean();
+// Next sequential ticket key, scoped per project: Master App -> MA-1, MA-2, ...
+// Derive the max numeric suffix for that prefix so deletions never collide.
+async function nextTicketKey(project) {
+  const prefix = Task.PROJECT_PREFIX[project] || "V";
+  const re = new RegExp(`^${prefix}-\\d+$`);
+  const rows = await Task.find({ ticketKey: re }).select("ticketKey").lean();
   const max = rows.reduce((m, t) => {
     const n = parseInt((t.ticketKey || "").split("-")[1], 10);
     return Number.isFinite(n) && n > m ? n : m;
   }, 0);
-  return `V-${max + 1}`;
+  return `${prefix}-${max + 1}`;
 }
 
 // The hardcoded project list (mirror of the enum on the model), for the filter UI.
@@ -55,7 +57,7 @@ router.get("/", async (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
   try {
-    const ticketKey = await nextTicketKey();
+    const ticketKey = await nextTicketKey(req.body.project);
     const task = await Task.create({ ...req.body, ticketKey, createdBy: req.user._id });
     await task.populate(POP_ASSIGNEE);
     await task.populate(POP_DEPENDS);

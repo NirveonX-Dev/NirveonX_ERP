@@ -13,6 +13,16 @@ const { Schema } = mongoose;
 // Keep in sync with PROJECTS in client/src/lib/projects.js
 const PROJECTS = ["Master App", "Master Web App", "Medzzapp Mobile", "ERP", "Other"];
 
+// Per-project ticket-key prefix, e.g. "Master App" -> MA-1, MA-2, ...
+// Keep in sync with PROJECT_PREFIX in client/src/lib/projects.js
+const PROJECT_PREFIX = {
+  "Master App": "MA",
+  "Master Web App": "MWA",
+  "Medzzapp Mobile": "MM",
+  ERP: "ERP",
+  Other: "V",
+};
+
 const TaskSchema = new Schema({
   // Short human key shown on the card, e.g. "V-54". Auto-assigned on create.
   ticketKey: { type: String, unique: true, sparse: true, index: true },
@@ -48,4 +58,5 @@ const TaskSchema = new Schema({
 
 const Task = mongoose.model("Task", TaskSchema);
 Task.PROJECTS = PROJECTS;
+Task.PROJECT_PREFIX = PROJECT_PREFIX;
 module.exports = Task;
