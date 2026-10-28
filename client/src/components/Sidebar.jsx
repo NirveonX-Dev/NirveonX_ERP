@@ -21,6 +21,7 @@ const NAV = [
   { to: "/leaderboard", label: "Leaderboard", roles: null },
   { to: "/performance", label: "Team Performance", roles: ["hr", "lead", "teamlead", "superadmin"] },
   { to: "/users", label: "Users", roles: ["hr", "lead", "superadmin"] },
+  { to: "/alerts", label: "App Alerts", roles: ["hr", "lead", "teamlead", "superadmin"] },
 ];
 
 export default function Sidebar({ open, onClose }) {

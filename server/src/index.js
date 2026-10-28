@@ -23,6 +23,7 @@ const departmentRoutes = require("./routes/departments");
 const notificationRoutes = require("./routes/notifications");
 const dashboardRoutes = require("./routes/dashboard");
 const publicRoutes = require("./routes/public");
+const { router: alertRoutes, ingest: alertIngest } = require("./routes/alerts");
 
 const app = express();
 
@@ -37,6 +38,8 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
 // whitelisted in User.toPublicJSON(). Every other route stays locked to
 // CLIENT_ORIGIN as before.
 app.use("/api/public", cors(), express.json(), publicRoutes);
+// Machine-to-machine alert ingest (shared-secret auth, no JWT, own CORS) — like /api/public.
+app.post("/api/alerts/ingest", cors(), express.json({ limit: "64kb" }), alertIngest);
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
@@ -62,6 +65,7 @@ app.use("/api/performance", performanceRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/alerts", alertRoutes);
 
 // 404 for unknown API routes
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
